@@ -1,0 +1,56 @@
+
+Input:
+# Instructions:
+You determine whether the Python script has succeeded or failed based on the given information.
+Output True if the script SUCCEEDED, False if it FAILED.
+Follow the rules below:
+
+# Rules:
+- Output False if "Error Data" contains any error messages or exceptions.
+- Output False if both "Error Data" and "Output Data" are empty.
+- Output False if "Output Data" does not contain clear experimental results such as:
+  - Quantitative results or measurements
+  - Numerical comparisons or improvements
+  - Completion messages indicating successful execution
+  - Statistical analysis or evaluation results
+- Output True ONLY if "Output Data" contains clear evidence of successful experimental execution with meaningful results.
+
+# Error Data:
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py", line 46, in <module>
+    main()
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py", line 38, in main
+    run(full_cfg, tag="full_experiment")
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py", line 20, in run
+    model, _ = train(data, cfg, tag=tag)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py", line 189, in train
+    out = model(data.x, data.edge_index)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py", line 142, in forward
+    x = self.layer1(x, edge_index)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py", line 97, in forward
+    b = self.hash(x[i], x[j])
+                  ~^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 257.04 GiB. GPU 0 has a total capacity of 79.15 GiB of which 73.22 GiB is free. Process 1318905 has 3.19 GiB memory in use. Including non-PyTorch memory, this process has 2.73 GiB memory in use. Of the allocated memory 2.23 GiB is allocated by PyTorch, and 20.50 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+# Output Data:
+=== [PHASE 2/2] Full experiment start Wed Sep 24 12:20:52 PM UTC 2025 ===
+Output:
+{
+    "is_experiment_successful": false
+}
