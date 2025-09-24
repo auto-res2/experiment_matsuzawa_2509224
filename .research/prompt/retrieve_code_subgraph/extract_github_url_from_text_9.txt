@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+The ITTA method improves the TTT strategy in two ways. First, a learnable consistency loss (Lwcont) is proposed for the TTT task. Instead of empirically defining an auxiliary objective, this loss introduces a weight subnetwork (fw) with learnable parameters, allowing flexible measurement of consistency between augmented views of intermediate representations (z and z'). The objective for the feature extractor and classifier is `min{θ,ϕ} Lmain + αLwcont`, where `Lmain` is a cross-entropy loss. To align `Lwcont` with `Lmain`, the weight subnetwork `fw` is updated by minimizing the difference between the normalized gradients of `Lmain` and `Lwcont` with respect to the feature extractor parameters (`min w ||ˆgmain - ˆgwcont||`). Second, additional adaptive parameters (fΘ) are introduced after each block of the pretrained feature extractor fθ. During the test-time adaptation phase, only these new adaptive parameters fΘ are updated using the learned consistency loss, while leaving the original model parameters unchanged. The update is performed in an online setting for test samples. fΘ is implemented with a structure similar to fw.
+
+# GitHub URLs List
+['https://github.com/liangchen527/ITTA']
+Output:
+{
+    "index": 0
+}
