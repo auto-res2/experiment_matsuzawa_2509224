@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+The paper proposes two new classes of neighborhood attention kernels. First, GEMM-based BMM-style kernels (GEMM NA) represent neighborhood attention as a batched General Matrix-Matrix Multiplication (GEMM) problem. This involves space-aware tiling and fused gather/scatter operations, allowing utilization of performance-optimized GEMM primitives and specialized hardware like Tensor Cores. The three primary operations (Pointwise-Neighborhood, Neighborhood-Neighborhood, Inverse-Neighborhood) are formulated as batched GEMMs with scatter/gather fusion, with tiling based on the original multi-dimensional layout and modified global pointer iterators. Second, fused kernels (Fused NA) extend this logic to fused attention kernels (like Flash Attention), adapting them for higher-rank/multi-dimensional spaces (2-D and 3-D). This approach eliminates the need to store attention weights in global memory, thereby circumventing the scatter/gather bottleneck. The fused kernels are built upon xFormers FMHA, applying space-aware tiling, neighborhood attention masking, and software predication for multi-dimensional tensor layouts. Both approaches are implemented in CUDA C++ using NVIDIA’s CUTLASS framework and support dilation and causal masking.
+
+# GitHub URLs List
+['https://github.com/SHI-Labs/NATTEN', 'https://github.com/NVIDIA/apex', 'https://github.com/facebookresearch/xformers']
+Output:
+{
+    "index": 0
+}
