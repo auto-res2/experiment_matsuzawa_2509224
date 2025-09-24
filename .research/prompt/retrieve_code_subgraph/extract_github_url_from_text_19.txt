@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+The GPS recipe consists of three main ingredients: (i) positional/structural encoding, (ii) local message-passing mechanism (MPNN), and (iii) global attention mechanism (Transformer). The architecture employs a hybrid GPS layer that updates features by aggregating outputs from an MPNN layer (e.g., GINE, GatedGCN, PNA) and a global attention layer (e.g., Transformer, Performer, BigBird). PE and SE are categorized as local, global, or relative and are integrated as additional node or edge features. To achieve linear scalability, the architecture utilizes linear attention mechanisms (Performer, BigBird) for global attention, avoiding the quadratic complexity of standard Transformers by implicitly encoding edge features into node representations via the MPNN layer. The model is theoretically argued to be a universal function approximator on graphs.
+
+# GitHub URLs List
+['https://github.com/rampasek/GraphGPS']
+Output:
+{
+    "index": 0
+}
