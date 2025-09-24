@@ -1040,6 +1040,11 @@
         "smoke_test_yaml": "dataset: Cora\nmodel:\n  hidden_dim: 64\n  out_dim: 7\n  heads: 8\n  k: 8\n  buckets: 4096\n  eps: 0.05\ntraining:\n  epochs: 2\n  lr: 0.005\n  weight_decay: 5e-4\n",
         "full_experiment_yaml": "dataset: Reddit\nmodel:\n  hidden_dim: 256\n  out_dim: 41  # Reddit dataset classes\n  heads: 8\n  k: 8\n  buckets: 8192\n  eps: 0.05\ntraining:\n  epochs: 10\n  lr: 0.002\n  weight_decay: 5e-4\n"
       }
+    },
+    "experimental_results": {
+      "result": "=== [PHASE 2/2] Full experiment start Wed Sep 24 12:20:52 PM UTC 2025 ===",
+      "error": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py\", line 46, in <module>\n    main()\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py\", line 38, in main\n    run(full_cfg, tag=\"full_experiment\")\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py\", line 20, in run\n    model, _ = train(data, cfg, tag=tag)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py\", line 189, in train\n    out = model(data.x, data.edge_index)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py\", line 1773, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py\", line 1784, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py\", line 142, in forward\n    x = self.layer1(x, edge_index)\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py\", line 1773, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py\", line 1784, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py\", line 97, in forward\n    b = self.hash(x[i], x[j])\n                  ~^^^\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 257.04 GiB. GPU 0 has a total capacity of 79.15 GiB of which 73.22 GiB is free. Process 1318905 has 3.19 GiB memory in use. Including non-PyTorch memory, this process has 2.73 GiB memory in use. Of the allocated memory 2.23 GiB is allocated by PyTorch, and 20.50 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+      "image_file_name_list": []
     }
   },
   "idea_info_history": [
@@ -1092,5 +1097,6 @@
       }
     }
   ],
+  "executed_flag": true,
   "experiment_iteration": 1
 }
