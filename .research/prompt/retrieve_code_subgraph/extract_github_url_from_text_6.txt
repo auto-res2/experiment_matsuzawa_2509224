@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+The core methodology involves deriving a conservation law for GAT gradient flow dynamics, which reveals a structural relationship between gradients and parameters. This law explains why standard initialization leads to imbalanced norms, hindering gradient propagation. To address this, a "balancing" procedure (Procedure 2.6) is proposed, which involves setting attention parameters to zero and scaling feature weights (Wl) layer-wise to satisfy a derived norm equality (Wl[i, :]^2 - al[i]^2 = Wl+1[: i]^2) by starting from the first layer and iteratively adjusting subsequent layers. For even deeper networks, a "Balanced Orthogonal Initialization" is introduced, which uses a Looks-Linear-Orthogonal (LLortho) matrix structure for feature weights before applying the balancing procedure. The theoretical foundation relies on rescale invariance and positive homogeneous activation functions.
+
+# GitHub URLs List
+['https://github.com/Diego999/pyGAT']
+Output:
+{
+    "index": 0
+}
