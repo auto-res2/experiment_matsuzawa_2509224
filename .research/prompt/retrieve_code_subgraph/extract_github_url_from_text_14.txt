@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+Tent's methodology centers on minimizing the Shannon entropy of model predictions, H(ˆy) = −∑ cp(ˆyc) logp(ˆyc), on target data during testing. This is achieved by modulating features within the model's normalization layers. Specifically, Tent estimates batch normalization statistics (mean µ and standard deviation σ) from the target data batch and optimizes channel-wise affine transformation parameters (scale γ and shift β). These parameters are part of the original normalization layers and are updated iteratively using the gradient of the entropy loss during the backward pass for each batch. The majority of the model's parameters (θ excluding γ,β) and its original training process remain fixed. The model must be pre-trained for the supervised task, probabilistic, and differentiable to enable this iterative, gradient-based adaptation.
+
+# GitHub URLs List
+['https://github.com/DequanWang/tent']
+Output:
+{
+    "index": 0
+}
