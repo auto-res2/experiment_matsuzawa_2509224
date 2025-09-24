@@ -1,0 +1,58 @@
+
+Input:
+The Python standard output and errors are provided below.
+Extract all information related to the experimental results from the standard output, and extract the Python error details from the errors, outputting them exactly as they are without any modifications.
+Do not extract unnecessary execution logs or information about Python package installations.
+
+# Standard Output
+=== [PHASE 2/2] Full experiment start Wed Sep 24 12:20:52 PM UTC 2025 ===
+
+
+# Error
+Downloading https://data.dgl.ai/dataset/reddit.zip
+Extracting .cache/datasets/raw/reddit.zip
+Processing...
+Done!
+/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py:180: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = GradScaler()
+Training (full_experiment):   0%|          | 0/10 [00:00<?, ?it/s]/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py:188: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast():
+Training (full_experiment):   0%|          | 0/10 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py", line 46, in <module>
+    main()
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py", line 38, in main
+    run(full_cfg, tag="full_experiment")
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py", line 20, in run
+    model, _ = train(data, cfg, tag=tag)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py", line 189, in train
+    out = model(data.x, data.edge_index)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py", line 142, in forward
+    x = self.layer1(x, edge_index)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py", line 97, in forward
+    b = self.hash(x[i], x[j])
+                  ~^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 257.04 GiB. GPU 0 has a total capacity of 79.15 GiB of which 73.22 GiB is free. Process 1318905 has 3.19 GiB memory in use. Including non-PyTorch memory, this process has 2.73 GiB memory in use. Of the allocated memory 2.23 GiB is allocated by PyTorch, and 20.50 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+Output:
+{
+    "extracted_output": "=== [PHASE 2/2] Full experiment start Wed Sep 24 12:20:52 PM UTC 2025 ===",
+    "extracted_error": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py\", line 46, in <module>\n    main()\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py\", line 38, in main\n    run(full_cfg, tag=\"full_experiment\")\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/main.py\", line 20, in run\n    model, _ = train(data, cfg, tag=tag)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py\", line 189, in train\n    out = model(data.x, data.edge_index)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py\", line 1773, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py\", line 1784, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py\", line 142, in forward\n    x = self.layer1(x, edge_index)\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py\", line 1773, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py\", line 1784, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/toma/pt80-1-a-28/_work/experiment_matsuzawa_2509224/experiment_matsuzawa_2509224/src/train.py\", line 97, in forward\n    b = self.hash(x[i], x[j])\n                  ~^^^\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 257.04 GiB. GPU 0 has a total capacity of 79.15 GiB of which 73.22 GiB is free. Process 1318905 has 3.19 GiB memory in use. Including non-PyTorch memory, this process has 2.73 GiB memory in use. Of the allocated memory 2.23 GiB is allocated by PyTorch, and 20.50 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)"
+}
