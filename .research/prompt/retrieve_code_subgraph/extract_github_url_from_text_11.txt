@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+The study focuses on Graph Attention Networks (GATs), specifically the GATv2 variant. The primary methodology involves deriving a conservation law for GAT gradient flow dynamics based on the concept of neuron-wise balancedness and rescale invariance, assuming positive homogeneous activation functions (e.g., ReLU). This law quantifies a relationship between model parameters and their gradients. Based on these theoretical insights, a balanced parameter initialization scheme (Procedure 2.6) is developed. This scheme sets attention parameters to zero and scales feature weights to ensure that the L2-norms of incoming and outgoing weights for each neuron satisfy a specific equality, thus ensuring 'balancedness' (c=0). An advanced version, 'Balanced Orthogonal Initialization' (BalO), further enhances this by employing a Looks-Linear-Orthogonal (LLortho) structure for feature weights before balancing, specifically tailored for ReLU activations to improve signal propagation.
+
+# GitHub URLs List
+['https://github.com/Diego999/pyGAT']
+Output:
+{
+    "index": 0
+}
