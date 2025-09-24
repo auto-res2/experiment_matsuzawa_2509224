@@ -1,0 +1,40 @@
+common:
+  batch_size: 64
+  num_workers: 8
+  seeds: [17, 42, 94]
+  amp: true
+  results_dir: .research/iteration1/full
+exp1:
+  enable: true
+  models:
+    - convnext_tiny.fb_in22k_ft_in1k
+    - vit_small_patch16_224.augreg_in21k_ft_in1k
+    - nf_resnet50.ra2_in1k
+    - resnet50
+  datasets:
+    imagenet_c:
+      corruptions: [gaussian_noise, shot_noise, impulse_noise, defocus_blur, glass_blur, motion_blur, zoom_blur, snow, frost, fog, brightness, contrast, elastic_transform, pixelate, jpeg_compression]
+      severities: [1, 2, 3, 4, 5]
+    tiny_imagenet_c:
+      severities: [1, 2, 3, 4, 5]
+    imagenet_v2: {}
+    imagenet_a: {}
+    domainnet:
+      domains: [clipart, sketch]
+exp2:
+  enable: true
+  meta_epochs: 2
+  models:
+    - convnext_tiny.fb_in22k_ft_in1k
+    - vit_small_patch16_224.augreg_in21k_ft_in1k
+  noise_grid:
+    sigma: [0.25, 0.5, 1.0]
+    colour_jitter: [0.0, 0.5, 1.0]
+  imagenet_fraction: 0.1
+exp3:
+  enable: true
+  budget_sequence: [3.3, 6.6, 13.0]
+  budget_interval_ms: 500
+  adversarial:
+    mono_class_frames: 300
+    sudden_shift_frames: 200

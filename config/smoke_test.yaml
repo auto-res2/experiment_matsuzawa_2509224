@@ -1,0 +1,21 @@
+common:
+  batch_size: 8
+  num_workers: 2
+  seeds: [17]
+  amp: false
+  results_dir: .research/iteration1/smoke
+exp1:
+  enable: true
+  models: [convnext_tiny.fb_in22k_ft_in1k]
+  datasets:
+    imagenet_c:
+      corruptions: [gaussian_noise]
+      severities: [1]
+exp2:
+  enable: true
+  meta_epochs: 1
+  models: [vit_small_patch16_224.augreg_in21k_ft_in1k]
+exp3:
+  enable: true
+  video_snippet: 300
+  budget_sequence: [6.6]
