@@ -64,28 +64,54 @@ class SAULayer(nn.Module):
             K: number of Householder terms kept from the low-rank expansion –
                this is the *any-time compute knob* exploited in Experiment-3.
         """
-        B, C = x.shape[:2]
+        # Handle different tensor shapes
+        if x.dim() == 4:  # Conv layers: (N,C,H,W)
+            B, C = x.shape[:2]
+            flatten_dim = 2
+        elif x.dim() == 3:  # Transformer layers: (N,L,C)
+            B, C = x.shape[0], x.shape[2]
+            flatten_dim = 1
+        else:
+            B, C = x.shape[0], x.shape[-1]
+            flatten_dim = 1
+
+        if self.C != C:
+            # Resize EMA buffers if channel dimension doesn't match
+            device = self.dw_ema.device
+            self.dw_ema = self.dw_ema.new_zeros(C)
+            self.db_ema = self.db_ema.new_zeros(C)
+            self.C = C
+
         # Standardise per sample (mean=0,std=1)
-        z = (x.flatten(2) - x.mean((2))).div(x.std((2), unbiased=False) + 1e-5)
+        z = x.flatten(flatten_dim)
+        z = (z - z.mean((flatten_dim), keepdim=True)).div(z.std((flatten_dim), unbiased=False, keepdim=True) + 1e-5)
         # Four channel-wise moments μ₁…μ₄
         m1 = z.mean(-1)
         m2 = z.var(-1, unbiased=False)
         m3 = (z**3).mean(-1)
         m4 = (z**4).mean(-1)
-        s = torch.stack([m1, m2, m3, m4], dim=2)  # (B,C,4)
+        s = torch.stack([m1, m2, m3, m4], dim=-1)  # (..., 4)
 
         # Low-rank non-linearity σ(T·s) ≈ tanh ▢
-        y = torch.tanh(torch.einsum("bcr,rf->bcf", s, self.T))
+        y = torch.tanh(torch.einsum("...cr,rf->...cf", s, self.T))
         # Householder prefix – first *K* terms only (any-time knob)
-        y = torch.einsum("bcf,fs->bcs", y[:, :, :K], self.P[:K])
+        y = torch.einsum("...cf,fs->...cs", y[..., :K], self.P[:K])
         dw, db = y.unbind(-1)
 
         # EMA (cheap, memory-free)
         self.dw_ema.mul_(1 - self.alpha).add_(self.alpha * dw.mean(0))
         self.db_ema.mul_(1 - self.alpha).add_(self.alpha * db.mean(0))
 
-        # Apply correction
-        return x * (1 + self.dw_ema[None, :, None, None]) + self.db_ema[None, :, None, None]
+        # Apply correction - handle both 4D (conv) and 3D (transformer) tensors
+        if x.dim() == 4:  # Conv layers: (N,C,H,W)
+            return x * (1 + self.dw_ema[None, :, None, None]) + self.db_ema[None, :, None, None]
+        elif x.dim() == 3:  # Transformer layers: (N,L,C)
+            return x * (1 + self.dw_ema[None, None, :]) + self.db_ema[None, None, :]
+        else:
+            # Fallback for other dimensions
+            shape = [1] * x.dim()
+            shape[-1] = -1  # Last dimension is always channels
+            return x * (1 + self.dw_ema.view(shape)) + self.db_ema.view(shape)
 
 
 # --------------------------------------------------------------------------------------
@@ -113,7 +139,7 @@ def _replace_module(module: nn.Module, attr_name: str, r: int, int8: bool):
 
     orig_param = getattr(module, attr_name)
     C = orig_param.shape[0]
-    layer = SAULayer(C, r=r, int8=int8)
+    layer = SAULayer(C, r=r, int8=int8).to(orig_param.device)
 
     # Freeze original weights – SAUNet never alters the backbone parameters.
     orig_param.requires_grad_(False)

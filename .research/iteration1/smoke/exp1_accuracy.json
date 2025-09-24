@@ -1,0 +1,9 @@
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 184.70973358753457
+  }
+]

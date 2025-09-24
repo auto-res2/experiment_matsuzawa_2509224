@@ -1,0 +1,6 @@
+{
+  "frames": 10,
+  "mean_latency_ms": 196.68619632720947,
+  "guard_rollbacks": 0,
+  "stream_fps": 2.306750374627277
+}

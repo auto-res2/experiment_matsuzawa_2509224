@@ -1,0 +1,6 @@
+{
+  "vit_small_patch16_224.augreg_in21k_ft_in1k_seed17": {
+    "meta_steps": 1,
+    "wall_clock_s": 0.5534868240356445
+  }
+}

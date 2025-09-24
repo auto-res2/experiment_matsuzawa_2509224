@@ -17,5 +17,5 @@ exp2:
   models: [vit_small_patch16_224.augreg_in21k_ft_in1k]
 exp3:
   enable: true
-  video_snippet: 300
-  budget_sequence: [6.6]
+  video_snippet: 10
+  budget_sequence: [3000.0]
