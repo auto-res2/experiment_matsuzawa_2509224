@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+MABN's core idea is to replace unstable batch statistics with more stable moving average statistics. Specifically, Exponential Moving Average Statistics (EMAS) are used for forward propagation (FP) statistics (mean and variance of feature maps), while Simple Moving Average Statistics (SMAS) are applied to backward propagation (BP) statistics (g_B and Ψ_B). The method also introduces a modified normalization formulation that normalizes feature maps using E[X²] instead of E[X] and Var(X), effectively reducing the number of batch statistics involved in BP and stabilizing gradients by eliminating g_B. To compensate for the absence of feature map centralization in the modified form, a Weight Centralization (WC) technique is applied to convolution kernels. Furthermore, a clipping and renormalizing strategy, adopted from Batch Renormalization (BRN), is employed to prevent training collapse.
+
+# GitHub URLs List
+['https://github.com/megvii-model/MABN']
+Output:
+{
+    "index": 0
+}
