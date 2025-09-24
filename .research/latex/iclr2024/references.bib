@@ -5,3 +5,675 @@
   publisher = {GitHub},
   url       = {https://github.com/airas-org/airas}
 }
+
+% ===========================================
+% REQUIRED CITATIONS
+% These papers must be cited in the manuscript
+% ===========================================
+
+@article{author-year-adaptive,
+ title = {Adaptive Structural Fingerprints for Graph Attention Networks}
+}
+
+@article{author-year-dynamic,
+ title = {Dynamic Rescaling for Training GNNs}
+}
+
+@article{author-year-graph,
+ title = {Graph Lottery Ticket Automated}
+}
+
+@article{chen-2021-accelerating,
+ abstract = {Communication overhead hinders the scalability of large-scale distributed
+training. Gossip SGD, where each node averages only with its neighbors, is more
+communication-efficient than the prevalent parallel SGD. However, its
+convergence rate is reversely proportional to quantity $1-\beta$ which measures
+the network connectivity. On large and sparse networks where $1-\beta \to 0$,
+Gossip SGD requires more iterations to converge, which offsets against its
+communication benefit. This paper introduces Gossip-PGA, which adds Periodic
+Global Averaging into Gossip SGD. Its transient stage, i.e., the iterations
+required to reach asymptotic linear speedup stage, improves from
+$\Omega(\beta^4 n^3/(1-\beta)^4)$ to $\Omega(\beta^4 n^3 H^4)$ for non-convex
+problems. The influence of network topology in Gossip-PGA can be controlled by
+the averaging period $H$. Its transient-stage complexity is also superior to
+Local SGD which has order $\Omega(n^3 H^4)$. Empirical results of large-scale
+training on image classification (ResNet50) and language modeling (BERT)
+validate our theoretical findings.},
+ arxiv_url = {https://arxiv.org/pdf/2105.09080v1.pdf},
+ author = {Yiming Chen and Kun Yuan and Yingya Zhang and Pan Pan and Yinghui Xu and Wotao Yin},
+ github_url = {https://github.com/NVIDIA/apex},
+ title = {Accelerating Gossip SGD with Periodic Global Averaging},
+ year = {2021}
+}
+
+@article{chen-2021-unified,
+ abstract = {With graphs rapidly growing in size and deeper graph neural networks (GNNs)
+emerging, the training and inference of GNNs become increasingly expensive.
+Existing network weight pruning algorithms cannot address the main space and
+computational bottleneck in GNNs, caused by the size and connectivity of the
+graph. To this end, this paper first presents a unified GNN sparsification
+(UGS) framework that simultaneously prunes the graph adjacency matrix and the
+model weights, for effectively accelerating GNN inference on large-scale
+graphs. Leveraging this new tool, we further generalize the recently popular
+lottery ticket hypothesis to GNNs for the first time, by defining a graph
+lottery ticket (GLT) as a pair of core sub-dataset and sparse sub-network,
+which can be jointly identified from the original GNN and the full dense graph
+by iteratively applying UGS. Like its counterpart in convolutional neural
+networks, GLT can be trained in isolation to match the performance of training
+with the full model and graph, and can be drawn from both randomly initialized
+and self-supervised pre-trained GNNs. Our proposal has been experimentally
+verified across various GNN architectures and diverse tasks, on both
+small-scale graph datasets (Cora, Citeseer and PubMed), and large-scale
+datasets from the challenging Open Graph Benchmark (OGB). Specifically, for
+node classification, our found GLTs achieve the same accuracies with 20%~98%
+MACs saving on small graphs and 25%~85% MACs saving on large ones. For link
+prediction, GLTs lead to 48%~97% and 70% MACs saving on small and large graph
+datasets, respectively, without compromising predictive performance. Codes
+available at https://github.com/VITA-Group/Unified-LTH-GNN.},
+ arxiv_url = {https://arxiv.org/pdf/2102.06790v2.pdf},
+ author = {Tianlong Chen and Yongduo Sui and Xuxi Chen and Aston Zhang and Zhangyang Wang},
+ title = {A Unified Lottery Ticket Hypothesis for Graph Neural Networks},
+ year = {2021}
+}
+
+@article{fey-2021-gnnautoscale,
+ abstract = {We present GNNAutoScale (GAS), a framework for scaling arbitrary
+message-passing GNNs to large graphs. GAS prunes entire sub-trees of the
+computation graph by utilizing historical embeddings from prior training
+iterations, leading to constant GPU memory consumption in respect to input node
+size without dropping any data. While existing solutions weaken the expressive
+power of message passing due to sub-sampling of edges or non-trainable
+propagations, our approach is provably able to maintain the expressive power of
+the original GNN. We achieve this by providing approximation error bounds of
+historical embeddings and show how to tighten them in practice. Empirically, we
+show that the practical realization of our framework, PyGAS, an easy-to-use
+extension for PyTorch Geometric, is both fast and memory-efficient, learns
+expressive node representations, closely resembles the performance of their
+non-scaling counterparts, and reaches state-of-the-art performance on
+large-scale graphs.},
+ arxiv_url = {https://arxiv.org/pdf/2106.05609v1.pdf},
+ author = {Matthias Fey and Jan E. Lenssen and Frank Weichert and Jure Leskovec},
+ title = {GNNAutoScale: Scalable and Expressive Graph Neural Networks via Historical Embeddings},
+ year = {2021}
+}
+
+@article{hassani-2024-faster,
+ abstract = {Neighborhood attention reduces the cost of self attention by restricting each
+token's attention span to its nearest neighbors. This restriction,
+parameterized by a window size and dilation factor, draws a spectrum of
+possible attention patterns between linear projection and self attention.
+Neighborhood attention, and more generally sliding window attention patterns,
+have long been bounded by infrastructure, particularly in higher-rank spaces
+(2-D and 3-D), calling for the development of custom kernels, which have been
+limited in either functionality, or performance, if not both. In this work, we
+aim to massively improve upon existing infrastructure by providing two new
+methods for implementing neighborhood attention. We first show that
+neighborhood attention can be represented as a batched GEMM problem, similar to
+standard attention, and implement it for 1-D and 2-D neighborhood attention.
+These kernels on average provide 895% and 272% improvement in full precision
+runtime compared to existing naive CUDA kernels for 1-D and 2-D neighborhood
+attention respectively. We find that aside from being heavily bound by memory
+bandwidth, certain inherent inefficiencies exist in all unfused implementations
+of neighborhood attention, which in most cases undo their theoretical
+efficiency gain. Motivated by the progress made into fused dot-product
+attention kernels, we developed fused neighborhood attention; an adaptation of
+fused dot-product attention kernels that allow fine-grained control over
+attention across different spatial axes. Known for reducing the quadratic time
+complexity of self attention to a linear complexity, neighborhood attention can
+now enjoy a reduced and constant memory footprint, and record-breaking half
+precision runtime. We observe that our fused implementation successfully
+circumvents some of the unavoidable inefficiencies in unfused
+implementations...},
+ arxiv_url = {https://arxiv.org/pdf/2403.04690v3.pdf},
+ author = {Ali Hassani and Wen-Mei Hwu and Humphrey Shi},
+ github_url = {https://github.com/SHI-Labs/NATTEN},
+ title = {Faster Neighborhood Attention: Reducing the O(n^2) Cost of Self Attention at the Threadblock Level},
+ year = {2024}
+}
+
+@article{liu-2020-bandit,
+ abstract = {Several sampling algorithms with variance reduction have been proposed for
+accelerating the training of Graph Convolution Networks (GCNs). However, due to
+the intractable computation of optimal sampling distribution, these sampling
+algorithms are suboptimal for GCNs and are not applicable to more general graph
+neural networks (GNNs) where the message aggregator contains learned weights
+rather than fixed weights, such as Graph Attention Networks (GAT). The
+fundamental reason is that the embeddings of the neighbors or learned weights
+involved in the optimal sampling distribution are changing during the training
+and not known a priori, but only partially observed when sampled, thus making
+the derivation of an optimal variance reduced samplers non-trivial. In this
+paper, we formulate the optimization of the sampling variance as an adversary
+bandit problem, where the rewards are related to the node embeddings and
+learned weights, and can vary constantly. Thus a good sampler needs to acquire
+variance information about more neighbors (exploration) while at the same time
+optimizing the immediate sampling variance (exploit). We theoretically show
+that our algorithm asymptotically approaches the optimal variance within a
+factor of 3. We show the efficiency and effectiveness of our approach on
+multiple datasets.},
+ arxiv_url = {https://arxiv.org/pdf/2006.05806v2.pdf},
+ author = {Ziqi Liu and Zhengwei Wu and Zhiqiang Zhang and Jun Zhou and Shuang Yang and Le Song and Yuan Qi},
+ github_url = {https://github.com/xavierzw/ogb-geniepath-bs},
+ title = {Bandit Samplers for Training Graph Neural Networks},
+ year = {2020}
+}
+
+@article{liu-2022-rsc,
+ abstract = {The training of graph neural networks (GNNs) is extremely time consuming
+because sparse graph-based operations are hard to be accelerated by hardware.
+Prior art explores trading off the computational precision to reduce the time
+complexity via sampling-based approximation. Based on the idea, previous works
+successfully accelerate the dense matrix based operations (e.g., convolution
+and linear) with negligible accuracy drop. However, unlike dense matrices,
+sparse matrices are stored in the irregular data format such that each
+row/column may have different number of non-zero entries. Thus, compared to the
+dense counterpart, approximating sparse operations has two unique challenges
+(1) we cannot directly control the efficiency of approximated sparse operation
+since the computation is only executed on non-zero entries; (2) sub-sampling
+sparse matrices is much more inefficient due to the irregular data format. To
+address the issues, our key idea is to control the accuracy-efficiency trade
+off by optimizing computation resource allocation layer-wisely and
+epoch-wisely. Specifically, for the first challenge, we customize the
+computation resource to different sparse operations, while limit the total used
+resource below a certain budget. For the second challenge, we cache previous
+sampled sparse matrices to reduce the epoch-wise sampling overhead. Finally, we
+propose a switching mechanisms to improve the generalization of GNNs trained
+with approximated operations. To this end, we propose Randomized Sparse
+Computation, which for the first time demonstrate the potential of training
+GNNs with approximated operations. In practice, rsc can achieve up to
+$11.6\times$ speedup for a single sparse operation and a $1.6\times$ end-to-end
+wall-clock time speedup with negligible accuracy drop.},
+ arxiv_url = {https://arxiv.org/pdf/2210.10737v2.pdf},
+ author = {Zirui Liu and Shengyuan Chen and Kaixiong Zhou and Daochen Zha and Xiao Huang and Xia Hu},
+ title = {RSC: Accelerate Graph Neural Networks Training via Randomized Sparse Computations},
+ year = {2022}
+}
+
+@article{mustafa-2023-are,
+ abstract = {While the expressive power and computational capabilities of graph neural
+networks (GNNs) have been theoretically studied, their optimization and
+learning dynamics, in general, remain largely unexplored. Our study undertakes
+the Graph Attention Network (GAT), a popular GNN architecture in which a node's
+neighborhood aggregation is weighted by parameterized attention coefficients.
+We derive a conservation law of GAT gradient flow dynamics, which explains why
+a high portion of parameters in GATs with standard initialization struggle to
+change during training. This effect is amplified in deeper GATs, which perform
+significantly worse than their shallow counterparts. To alleviate this problem,
+we devise an initialization scheme that balances the GAT network. Our approach
+i) allows more effective propagation of gradients and in turn enables
+trainability of deeper networks, and ii) attains a considerable speedup in
+training and convergence time in comparison to the standard initialization. Our
+main theorem serves as a stepping stone to studying the learning dynamics of
+positive homogeneous models with attention mechanisms.},
+ arxiv_url = {https://arxiv.org/pdf/2310.07235v2.pdf},
+ author = {Nimrah Mustafa and Aleksandar Bojchevski and Rebekka Burkholz},
+ github_url = {https://github.com/Diego999/pyGAT},
+ title = {Are GATs Out of Balance?},
+ year = {2023}
+}
+
+@article{mustafa-2024-gate,
+ abstract = {Graph Attention Networks (GATs) are designed to provide flexible neighborhood
+aggregation that assigns weights to neighbors according to their importance. In
+practice, however, GATs are often unable to switch off task-irrelevant
+neighborhood aggregation, as we show experimentally and analytically. To
+address this challenge, we propose GATE, a GAT extension that holds three major
+advantages: i) It alleviates over-smoothing by addressing its root cause of
+unnecessary neighborhood aggregation. ii) Similarly to perceptrons, it benefits
+from higher depth as it can still utilize additional layers for (non-)linear
+feature transformations in case of (nearly) switched-off neighborhood
+aggregation. iii) By down-weighting connections to unrelated neighbors, it
+often outperforms GATs on real-world heterophilic datasets. To further validate
+our claims, we construct a synthetic test bed to analyze a model's ability to
+utilize the appropriate amount of neighborhood aggregation, which could be of
+independent interest.},
+ arxiv_url = {https://arxiv.org/pdf/2406.00418v2.pdf},
+ author = {Nimrah Mustafa and Rebekka Burkholz},
+ title = {GATE: How to Keep Out Intrusive Neighbors},
+ year = {2024}
+}
+
+@article{rampek-2022-recipe,
+ abstract = {We propose a recipe on how to build a general, powerful, scalable (GPS) graph
+Transformer with linear complexity and state-of-the-art results on a diverse
+set of benchmarks. Graph Transformers (GTs) have gained popularity in the field
+of graph representation learning with a variety of recent publications but they
+lack a common foundation about what constitutes a good positional or structural
+encoding, and what differentiates them. In this paper, we summarize the
+different types of encodings with a clearer definition and categorize them as
+being $\textit{local}$, $\textit{global}$ or $\textit{relative}$. The prior GTs
+are constrained to small graphs with a few hundred nodes, here we propose the
+first architecture with a complexity linear in the number of nodes and edges
+$O(N+E)$ by decoupling the local real-edge aggregation from the fully-connected
+Transformer. We argue that this decoupling does not negatively affect the
+expressivity, with our architecture being a universal function approximator on
+graphs. Our GPS recipe consists of choosing 3 main ingredients: (i)
+positional/structural encoding, (ii) local message-passing mechanism, and (iii)
+global attention mechanism. We provide a modular framework $\textit{GraphGPS}$
+that supports multiple types of encodings and that provides efficiency and
+scalability both in small and large graphs. We test our architecture on 16
+benchmarks and show highly competitive results in all of them, show-casing the
+empirical benefits gained by the modularity and the combination of different
+strategies.},
+ arxiv_url = {https://arxiv.org/pdf/2205.12454v4.pdf},
+ author = {Ladislav Rampášek and Mikhail Galkin and Vijay Prakash Dwivedi and Anh Tuan Luu and Guy Wolf and Dominique Beaini},
+ github_url = {https://github.com/rampasek/GraphGPS},
+ title = {Recipe for a General, Powerful, Scalable Graph Transformer},
+ year = {2022}
+}
+
+@article{zeng-2019-graphsaint,
+ abstract = {Graph Convolutional Networks (GCNs) are powerful models for learning
+representations of attributed graphs. To scale GCNs to large graphs,
+state-of-the-art methods use various layer sampling techniques to alleviate the
+"neighbor explosion" problem during minibatch training. We propose GraphSAINT,
+a graph sampling based inductive learning method that improves training
+efficiency and accuracy in a fundamentally different way. By changing
+perspective, GraphSAINT constructs minibatches by sampling the training graph,
+rather than the nodes or edges across GCN layers. Each iteration, a complete
+GCN is built from the properly sampled subgraph. Thus, we ensure fixed number
+of well-connected nodes in all layers. We further propose normalization
+technique to eliminate bias, and sampling algorithms for variance reduction.
+Importantly, we can decouple the sampling from the forward and backward
+propagation, and extend GraphSAINT with many architecture variants (e.g., graph
+attention, jumping connection). GraphSAINT demonstrates superior performance in
+both accuracy and training time on five large graphs, and achieves new
+state-of-the-art F1 scores for PPI (0.995) and Reddit (0.970).},
+ arxiv_url = {https://arxiv.org/pdf/1907.04931v4.pdf},
+ author = {Hanqing Zeng and Hongkuan Zhou and Ajitesh Srivastava and Rajgopal Kannan and Viktor Prasanna},
+ github_url = {https://github.com/GraphSAINT/GraphSAINT},
+ title = {GraphSAINT: Graph Sampling Based Inductive Learning Method},
+ year = {2019}
+}
+
+@article{zhang-2023-joint,
+ abstract = {Due to the significant computational challenge of training large-scale graph
+neural networks (GNNs), various sparse learning techniques have been exploited
+to reduce memory and storage costs. Examples include \textit{graph
+sparsification} that samples a subgraph to reduce the amount of data
+aggregation and \textit{model sparsification} that prunes the neural network to
+reduce the number of trainable weights. Despite the empirical successes in
+reducing the training cost while maintaining the test accuracy, the theoretical
+generalization analysis of sparse learning for GNNs remains elusive. To the
+best of our knowledge, this paper provides the first theoretical
+characterization of joint edge-model sparse learning from the perspective of
+sample complexity and convergence rate in achieving zero generalization error.
+It proves analytically that both sampling important nodes and pruning neurons
+with the lowest-magnitude can reduce the sample complexity and improve
+convergence without compromising the test accuracy. Although the analysis is
+centered on two-layer GNNs with structural constraints on data, the insights
+are applicable to more general setups and justified by both synthetic and
+practical citation datasets.},
+ arxiv_url = {https://arxiv.org/pdf/2302.02922v1.pdf},
+ author = {Shuai Zhang and Meng Wang and Pin-Yu Chen and Sijia Liu and Songtao Lu and Miao Liu},
+ journal = {The Eleventh International Conference on Learning Representations,
+  2023},
+ title = {Joint Edge-Model Sparse Learning is Provably Efficient for Graph Neural Networks},
+ year = {2023}
+}
+
+@article{zhang-2024-two,
+ abstract = {Graph Neural Networks (GNNs) excel in various graph learning tasks but face
+computational challenges when applied to large-scale graphs. A promising
+solution is to remove non-essential edges to reduce the computational overheads
+in GNN. Previous literature generally falls into two categories:
+topology-guided and semantic-guided. The former maintains certain graph
+topological properties yet often underperforms on GNNs due to low integration
+with neural network training. The latter performs well at lower sparsity on
+GNNs but faces performance collapse at higher sparsity levels. With this in
+mind, we take the first step to propose a new research line and concept termed
+Graph Sparse Training (GST), which dynamically manipulates sparsity at the data
+level. Specifically, GST initially constructs a topology & semantic anchor at a
+low training cost, followed by performing dynamic sparse training to align the
+sparse graph with the anchor. We introduce the Equilibria Sparsification
+Principle to guide this process, effectively balancing the preservation of both
+topological and semantic information. Ultimately, GST produces a sparse graph
+with maximum topological integrity and no performance degradation. Extensive
+experiments on 6 datasets and 5 backbones showcase that GST (I) identifies
+subgraphs at higher graph sparsity levels (1.67%~15.85% $\uparrow$) than
+state-of-the-art sparsification methods, (II) preserves more key spectral
+properties, (III) achieves 1.27-3.42$\times$ speedup in GNN inference and (IV)
+successfully helps graph adversarial defense and graph lottery tickets.},
+ arxiv_url = {https://arxiv.org/pdf/2402.01242v1.pdf},
+ author = {Guibin Zhang and Yanwei Yue and Kun Wang and Junfeng Fang and Yongduo Sui and Kai Wang and Yuxuan Liang and Dawei Cheng and Shirui Pan and Tianlong Chen},
+ title = {Two Heads Are Better Than One: Boosting Graph Sparse Training via Semantic and Topological Awareness},
+ year = {2024}
+}
+
+@article{zhu-2023-aggregation,
+ abstract = {As graph data size increases, the vast latency and memory consumption during
+inference pose a significant challenge to the real-world deployment of Graph
+Neural Networks (GNNs). While quantization is a powerful approach to reducing
+GNNs complexity, most previous works on GNNs quantization fail to exploit the
+unique characteristics of GNNs, suffering from severe accuracy degradation.
+Through an in-depth analysis of the topology of GNNs, we observe that the
+topology of the graph leads to significant differences between nodes, and most
+of the nodes in a graph appear to have a small aggregation value. Motivated by
+this, in this paper, we propose the Aggregation-Aware mixed-precision
+Quantization ($\rm A^2Q$) for GNNs, where an appropriate bitwidth is
+automatically learned and assigned to each node in the graph. To mitigate the
+vanishing gradient problem caused by sparse connections between nodes, we
+propose a Local Gradient method to serve the quantization error of the node
+features as the supervision during training. We also develop a Nearest Neighbor
+Strategy to deal with the generalization on unseen graphs. Extensive
+experiments on eight public node-level and graph-level datasets demonstrate the
+generality and robustness of our proposed method. Compared to the FP32 models,
+our method can achieve up to a 18.6x (i.e., 1.70bit) compression ratio with
+negligible accuracy degradation. Morever, compared to the state-of-the-art
+quantization method, our method can achieve up to 11.4\% and 9.5\% accuracy
+improvements on the node-level and graph-level tasks, respectively, and up to
+2x speedup on a dedicated hardware accelerator.},
+ arxiv_url = {https://arxiv.org/pdf/2302.00193v1.pdf},
+ author = {Zeyu Zhu and Fanrong Li and Zitao Mo and Qinghao Hu and Gang Li and Zejian Liu and Xiaoyao Liang and Jian Cheng},
+ title = {$\rm A^2Q$: Aggregation-Aware Quantization for Graph Neural Networks},
+ year = {2023}
+}
+
+% ===========================================
+% REFERENCE CANDIDATES
+% Additional reference papers for context
+% ===========================================
+
+@article{author-year-dependent,
+ title = {Dependent rounding and its applications to approximation algorithms}
+}
+
+@article{author-year-the,
+ title = {The nonstochastic multiarmed bandit problem}
+}
+
+@article{ba-2016-layer,
+ abstract = {Training state-of-the-art, deep neural networks is computationally expensive.
+One way to reduce the training time is to normalize the activities of the
+neurons. A recently introduced technique called batch normalization uses the
+distribution of the summed input to a neuron over a mini-batch of training
+cases to compute a mean and variance which are then used to normalize the
+summed input to that neuron on each training case. This significantly reduces
+the training time in feed-forward neural networks. However, the effect of batch
+normalization is dependent on the mini-batch size and it is not obvious how to
+apply it to recurrent neural networks. In this paper, we transpose batch
+normalization into layer normalization by computing the mean and variance used
+for normalization from all of the summed inputs to the neurons in a layer on a
+single training case. Like batch normalization, we also give each neuron its
+own adaptive bias and gain which are applied after the normalization but before
+the non-linearity. Unlike batch normalization, layer normalization performs
+exactly the same computation at training and test times. It is also
+straightforward to apply to recurrent neural networks by computing the
+normalization statistics separately at each time step. Layer normalization is
+very effective at stabilizing the hidden state dynamics in recurrent networks.
+Empirically, we show that layer normalization can substantially reduce the
+training time compared with previously published techniques.},
+ arxiv_url = {https://arxiv.org/pdf/1607.06450v1.pdf},
+ author = {Jimmy Lei Ba and Jamie Ryan Kiros and Geoffrey E. Hinton},
+ title = {Layer normalization},
+ year = {2016}
+}
+
+@article{battaglia-2018-relational,
+ abstract = {Artificial intelligence (AI) has undergone a renaissance recently, making
+major progress in key domains such as vision, language, control, and
+decision-making. This has been due, in part, to cheap data and cheap compute
+resources, which have fit the natural strengths of deep learning. However, many
+defining characteristics of human intelligence, which developed under much
+different pressures, remain out of reach for current approaches. In particular,
+generalizing beyond one's experiences--a hallmark of human intelligence from
+infancy--remains a formidable challenge for modern AI.
+  The following is part position paper, part review, and part unification. We
+argue that combinatorial generalization must be a top priority for AI to
+achieve human-like abilities, and that structured representations and
+computations are key to realizing this objective. Just as biology uses nature
+and nurture cooperatively, we reject the false choice between
+"hand-engineering" and "end-to-end" learning, and instead advocate for an
+approach which benefits from their complementary strengths. We explore how
+using relational inductive biases within deep learning architectures can
+facilitate learning about entities, relations, and rules for composing them. We
+present a new building block for the AI toolkit with a strong relational
+inductive bias--the graph network--which generalizes and extends various
+approaches for neural networks that operate on graphs, and provides a
+straightforward interface for manipulating structured knowledge and producing
+structured behaviors. We discuss how graph networks can support relational
+reasoning and combinatorial generalization, laying the foundation for more
+sophisticated, interpretable, and flexible patterns of reasoning. As a
+companion to this paper, we have released an open-source software library for
+building graph networks, with demonstrations of how to use them in practice.},
+ arxiv_url = {https://arxiv.org/pdf/1806.01261v3.pdf},
+ author = {Peter W. Battaglia and Jessica B. Hamrick and Victor Bapst and Alvaro Sanchez-Gonzalez and Vinicius Zambaldi and Mateusz Malinowski and Andrea Tacchetti and David Raposo and Adam Santoro and Ryan Faulkner and Caglar Gulcehre and Francis Song and Andrew Ballard and Justin Gilmer and George Dahl and Ashish Vaswani and Kelsey Allen and Charles Nash and Victoria Langston and Chris Dyer and Nicolas Heess and Daan Wierstra and Pushmeet Kohli and Matt Botvinick and Oriol Vinyals and Yujia Li and Razvan Pascanu},
+ title = {Relational inductive biases, deep learning, and graph networks},
+ year = {2018}
+}
+
+@article{burtini-2015-survey,
+ abstract = {Adaptive and sequential experiment design is a well-studied area in numerous
+domains. We survey and synthesize the work of the online statistical learning
+paradigm referred to as multi-armed bandits integrating the existing research
+as a resource for a certain class of online experiments. We first explore the
+traditional stochastic model of a multi-armed bandit, then explore a taxonomic
+scheme of complications to that model, for each complication relating it to a
+specific requirement or consideration of the experiment design context.
+Finally, at the end of the paper, we present a table of known upper-bounds of
+regret for all studied algorithms providing both perspectives for future
+theoretical work and a decision-making tool for practitioners looking for
+theoretical guarantees.},
+ arxiv_url = {https://arxiv.org/pdf/1510.00757v4.pdf},
+ author = {Giuseppe Burtini and Jason Loeppky and Ramon Lawrence},
+ title = {A survey of online experiment design with the stochastic multi-armed bandit},
+ year = {2015}
+}
+
+@article{chen-2017-stochastic,
+ abstract = {Graph convolutional networks (GCNs) are powerful deep neural networks for
+graph-structured data. However, GCN computes the representation of a node
+recursively from its neighbors, making the receptive field size grow
+exponentially with the number of layers. Previous attempts on reducing the
+receptive field size by subsampling neighbors do not have a convergence
+guarantee, and their receptive field size per node is still in the order of
+hundreds. In this paper, we develop control variate based algorithms which
+allow sampling an arbitrarily small neighbor size. Furthermore, we prove new
+theoretical guarantee for our algorithms to converge to a local optimum of GCN.
+Empirical results show that our algorithms enjoy a similar convergence with the
+exact algorithm using only two neighbors per node. The runtime of our
+algorithms on a large Reddit dataset is only one seventh of previous neighbor
+sampling algorithms.},
+ arxiv_url = {https://arxiv.org/pdf/1710.10568v3.pdf},
+ author = {Jianfei Chen and Jun Zhu and Le Song},
+ title = {Stochastic training of graph convolutional networks with variance reduction},
+ year = {2017}
+}
+
+@article{chen-2018-fastgcn,
+ abstract = {The graph convolutional networks (GCN) recently proposed by Kipf and Welling
+are an effective graph model for semi-supervised learning. This model, however,
+was originally designed to be learned with the presence of both training and
+test data. Moreover, the recursive neighborhood expansion across layers poses
+time and memory challenges for training with large, dense graphs. To relax the
+requirement of simultaneous availability of test data, we interpret graph
+convolutions as integral transforms of embedding functions under probability
+measures. Such an interpretation allows for the use of Monte Carlo approaches
+to consistently estimate the integrals, which in turn leads to a batched
+training scheme as we propose in this work---FastGCN. Enhanced with importance
+sampling, FastGCN not only is efficient for training but also generalizes well
+for inference. We show a comprehensive set of experiments to demonstrate its
+effectiveness compared with GCN and related models. In particular, training is
+orders of magnitude more efficient while predictions remain comparably
+accurate.},
+ arxiv_url = {https://arxiv.org/pdf/1801.10247v1.pdf},
+ author = {Jie Chen and Tengfei Ma and Cao Xiao},
+ title = {Fastgcn: fast learning with graph convolutional networks via importance sampling},
+ year = {2018}
+}
+
+@article{chiang-2019-cluster,
+ abstract = {Graph convolutional network (GCN) has been successfully applied to many
+graph-based applications; however, training a large-scale GCN remains
+challenging. Current SGD-based algorithms suffer from either a high
+computational cost that exponentially grows with number of GCN layers, or a
+large space requirement for keeping the entire graph and the embedding of each
+node in memory. In this paper, we propose Cluster-GCN, a novel GCN algorithm
+that is suitable for SGD-based training by exploiting the graph clustering
+structure. Cluster-GCN works as the following: at each step, it samples a block
+of nodes that associate with a dense subgraph identified by a graph clustering
+algorithm, and restricts the neighborhood search within this subgraph. This
+simple but effective strategy leads to significantly improved memory and
+computational efficiency while being able to achieve comparable test accuracy
+with previous algorithms. To test the scalability of our algorithm, we create a
+new Amazon2M data with 2 million nodes and 61 million edges which is more than
+5 times larger than the previous largest publicly available dataset (Reddit).
+For training a 3-layer GCN on this data, Cluster-GCN is faster than the
+previous state-of-the-art VR-GCN (1523 seconds vs 1961 seconds) and using much
+less memory (2.2GB vs 11.2GB). Furthermore, for training 4 layer GCN on this
+data, our algorithm can finish in around 36 minutes while all the existing GCN
+training algorithms fail to train due to the out-of-memory issue. Furthermore,
+Cluster-GCN allows us to train much deeper GCN without much time and memory
+overhead, which leads to improved prediction accuracy---using a 5-layer
+Cluster-GCN, we achieve state-of-the-art test F1 score 99.36 on the PPI
+dataset, while the previous best result was 98.71 by [16]. Our codes are
+publicly available at
+https://github.com/google-research/google-research/tree/master/cluster_gcn.},
+ arxiv_url = {https://arxiv.org/pdf/1905.07953v2.pdf},
+ author = {Wei-Lin Chiang and Xuanqing Liu and Si Si and Yang Li and Samy Bengio and Cho-Jui Hsieh},
+ doi = {10.1145/3292500.3330925},
+ title = {Cluster-gcn: An efﬁcient algorithm for training deep and large graph convolutional networks},
+ year = {2019}
+}
+
+@article{hamilton-2017-inductive,
+ abstract = {Low-dimensional embeddings of nodes in large graphs have proved extremely
+useful in a variety of prediction tasks, from content recommendation to
+identifying protein functions. However, most existing approaches require that
+all nodes in the graph are present during training of the embeddings; these
+previous approaches are inherently transductive and do not naturally generalize
+to unseen nodes. Here we present GraphSAGE, a general, inductive framework that
+leverages node feature information (e.g., text attributes) to efficiently
+generate node embeddings for previously unseen data. Instead of training
+individual embeddings for each node, we learn a function that generates
+embeddings by sampling and aggregating features from a node's local
+neighborhood. Our algorithm outperforms strong baselines on three inductive
+node-classification benchmarks: we classify the category of unseen nodes in
+evolving information graphs based on citation and Reddit post data, and we show
+that our algorithm generalizes to completely unseen graphs using a multi-graph
+dataset of protein-protein interactions.},
+ arxiv_url = {https://arxiv.org/pdf/1706.02216v4.pdf},
+ author = {William L. Hamilton and Rex Ying and Jure Leskovec},
+ title = {Inductive representation learning on large graphs},
+ year = {2017}
+}
+
+@article{hu-2020-open,
+ abstract = {We present the Open Graph Benchmark (OGB), a diverse set of challenging and
+realistic benchmark datasets to facilitate scalable, robust, and reproducible
+graph machine learning (ML) research. OGB datasets are large-scale, encompass
+multiple important graph ML tasks, and cover a diverse range of domains,
+ranging from social and information networks to biological networks, molecular
+graphs, source code ASTs, and knowledge graphs. For each dataset, we provide a
+unified evaluation protocol using meaningful application-specific data splits
+and evaluation metrics. In addition to building the datasets, we also perform
+extensive benchmark experiments for each dataset. Our experiments suggest that
+OGB datasets present significant challenges of scalability to large-scale
+graphs and out-of-distribution generalization under realistic data splits,
+indicating fruitful opportunities for future research. Finally, OGB provides an
+automated end-to-end graph ML pipeline that simplifies and standardizes the
+process of graph data loading, experimental setup, and model evaluation. OGB
+will be regularly updated and welcomes inputs from the community. OGB datasets
+as well as data loaders, evaluation scripts, baseline code, and leaderboards
+are publicly available at https://ogb.stanford.edu .},
+ arxiv_url = {https://arxiv.org/pdf/2005.00687v7.pdf},
+ author = {Weihua Hu and Matthias Fey and Marinka Zitnik and Yuxiao Dong and Hongyu Ren and Bowen Liu and Michele Catasta and Jure Leskovec},
+ title = {Open graph benchmark: Datasets for machine learning on graphs},
+ year = {2020}
+}
+
+@article{huang-2018-adaptive,
+ abstract = {Graph Convolutional Networks (GCNs) have become a crucial tool on learning
+representations of graph vertices. The main challenge of adapting GCNs on
+large-scale graphs is the scalability issue that it incurs heavy cost both in
+computation and memory due to the uncontrollable neighborhood expansion across
+layers. In this paper, we accelerate the training of GCNs through developing an
+adaptive layer-wise sampling method. By constructing the network layer by layer
+in a top-down passway, we sample the lower layer conditioned on the top one,
+where the sampled neighborhoods are shared by different parent nodes and the
+over expansion is avoided owing to the fixed-size sampling. More importantly,
+the proposed sampler is adaptive and applicable for explicit variance
+reduction, which in turn enhances the training of our method. Furthermore, we
+propose a novel and economical approach to promote the message passing over
+distant nodes by applying skip connections. Intensive experiments on several
+benchmarks verify the effectiveness of our method regarding the classification
+accuracy while enjoying faster convergence speed.},
+ arxiv_url = {https://arxiv.org/pdf/1809.05343v3.pdf},
+ author = {Wenbing Huang and Tong Zhang and Yu Rong and Junzhou Huang},
+ title = {Adaptive sampling towards fast graph represen- tation learning},
+ year = {2018}
+}
+
+@article{kipf-2016-semi,
+ abstract = {We present a scalable approach for semi-supervised learning on
+graph-structured data that is based on an efficient variant of convolutional
+neural networks which operate directly on graphs. We motivate the choice of our
+convolutional architecture via a localized first-order approximation of
+spectral graph convolutions. Our model scales linearly in the number of graph
+edges and learns hidden layer representations that encode both local graph
+structure and features of nodes. In a number of experiments on citation
+networks and on a knowledge graph dataset we demonstrate that our approach
+outperforms related methods by a significant margin.},
+ arxiv_url = {https://arxiv.org/pdf/1609.02907v4.pdf},
+ author = {Thomas N. Kipf and Max Welling},
+ title = {Semi-supervised classiﬁcation with graph convolutional networks},
+ year = {2016}
+}
+
+@article{liu-2018-geniepath,
+ abstract = {We present, GeniePath, a scalable approach for learning adaptive receptive
+fields of neural networks defined on permutation invariant graph data. In
+GeniePath, we propose an adaptive path layer consists of two complementary
+functions designed for breadth and depth exploration respectively, where the
+former learns the importance of different sized neighborhoods, while the latter
+extracts and filters signals aggregated from neighbors of different hops away.
+Our method works in both transductive and inductive settings, and extensive
+experiments compared with competitive methods show that our approaches yield
+state-of-the-art results on large graphs.},
+ arxiv_url = {https://arxiv.org/pdf/1802.00910v3.pdf},
+ author = {Ziqi Liu and Chaochao Chen and Longfei Li and Jun Zhou and Xiaolong Li and Le Song and Yuan Qi},
+ title = {Geniepath: Graph neural networks with adaptive receptive paths},
+ year = {2018}
+}
+
+@article{salehi-2017-stochastic,
+ abstract = {Many stochastic optimization algorithms work by estimating the gradient of
+the cost function on the fly by sampling datapoints uniformly at random from a
+training set. However, the estimator might have a large variance, which
+inadvertently slows down the convergence rate of the algorithms. One way to
+reduce this variance is to sample the datapoints from a carefully selected
+non-uniform distribution. In this work, we propose a novel non-uniform sampling
+approach that uses the multi-armed bandit framework. Theoretically, we show
+that our algorithm asymptotically approximates the optimal variance within a
+factor of 3. Empirically, we show that using this datapoint-selection technique
+results in a significant reduction in the convergence time and variance of
+several stochastic optimization algorithms such as SGD, SVRG and SAGA. This
+approach for sampling datapoints is general, and can be used in conjunction
+with any algorithm that uses an unbiased gradient estimation -- we expect it to
+have broad applicability beyond the specific examples explored in this work.},
+ arxiv_url = {https://arxiv.org/pdf/1708.02544v2.pdf},
+ author = {Farnood Salehi and L. Elisa Celis and Patrick Thiran},
+ title = {Stochastic optimization with bandit sampling},
+ year = {2017}
+}
+
+@article{schlichtkrull-2017-modeling,
+ abstract = {Knowledge graphs enable a wide variety of applications, including question
+answering and information retrieval. Despite the great effort invested in their
+creation and maintenance, even the largest (e.g., Yago, DBPedia or Wikidata)
+remain incomplete. We introduce Relational Graph Convolutional Networks
+(R-GCNs) and apply them to two standard knowledge base completion tasks: Link
+prediction (recovery of missing facts, i.e. subject-predicate-object triples)
+and entity classification (recovery of missing entity attributes). R-GCNs are
+related to a recent class of neural networks operating on graphs, and are
+developed specifically to deal with the highly multi-relational data
+characteristic of realistic knowledge bases. We demonstrate the effectiveness
+of R-GCNs as a stand-alone model for entity classification. We further show
+that factorization models for link prediction such as DistMult can be
+significantly improved by enriching them with an encoder model to accumulate
+evidence over multiple inference steps in the relational graph, demonstrating a
+large improvement of 29.8% on FB15k-237 over a decoder-only baseline.},
+ arxiv_url = {https://arxiv.org/pdf/1703.06103v4.pdf},
+ author = {Michael Schlichtkrull and Thomas N. Kipf and Peter Bloem and Rianne van den Berg and Ivan Titov and Max Welling},
+ title = {Modeling relational data with graph convolutional networks},
+ year = {2017}
+}
