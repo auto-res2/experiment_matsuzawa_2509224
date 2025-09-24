@@ -1,1 +1,21 @@
-# Please list the required python packages.
+[project]
+name = "safevals"
+version = "0.1.0"
+description = "SAFE-VALS: Safety-aware Adaptive Sparse Attention for GNNs"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Researcher", email = "research@ai.example" }]
+
+[tool.poetry]
+# dummy to satisfy build systems
+
+[project.dependencies]
+# kept empty – use generic array below
+
+dependencies = [
+  "torch>=2.1.0",
+  "torch_geometric>=2.4.0",
+  "pyyaml>=6.0",
+  "tqdm>=4.64.0",
+  "numpy>=1.23.0",
+]

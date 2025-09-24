@@ -1,0 +1,12 @@
+dataset: Reddit
+model:
+  hidden_dim: 256
+  out_dim: 41  # Reddit dataset classes
+  heads: 8
+  k: 8
+  buckets: 8192
+  eps: 0.05
+training:
+  epochs: 10
+  lr: 0.002
+  weight_decay: 5e-4

@@ -1,0 +1,12 @@
+dataset: Cora
+model:
+  hidden_dim: 64
+  out_dim: 7
+  heads: 8
+  k: 8
+  buckets: 4096
+  eps: 0.05
+training:
+  epochs: 2
+  lr: 0.005
+  weight_decay: 5e-4
