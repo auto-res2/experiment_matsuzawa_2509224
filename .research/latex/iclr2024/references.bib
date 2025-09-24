@@ -5,3 +5,761 @@
   publisher = {GitHub},
   url       = {https://github.com/airas-org/airas}
 }
+
+% ===========================================
+% REQUIRED CITATIONS
+% These papers must be cited in the manuscript
+% ===========================================
+
+@article{alfarra-2023-evaluation,
+ abstract = {This paper proposes a novel online evaluation protocol for Test Time
+Adaptation (TTA) methods, which penalizes slower methods by providing them with
+fewer samples for adaptation. TTA methods leverage unlabeled data at test time
+to adapt to distribution shifts. Although many effective methods have been
+proposed, their impressive performance usually comes at the cost of
+significantly increased computation budgets. Current evaluation protocols
+overlook the effect of this extra computation cost, affecting their real-world
+applicability. To address this issue, we propose a more realistic evaluation
+protocol for TTA methods, where data is received in an online fashion from a
+constant-speed data stream, thereby accounting for the method's adaptation
+speed. We apply our proposed protocol to benchmark several TTA methods on
+multiple datasets and scenarios. Extensive experiments show that, when
+accounting for inference speed, simple and fast approaches can outperform more
+sophisticated but slower methods. For example, SHOT from 2020, outperforms the
+state-of-the-art method SAR from 2023 in this setting. Our results reveal the
+importance of developing practical TTA methods that are both accurate and
+efficient.},
+ arxiv_url = {https://arxiv.org/pdf/2304.04795v2.pdf},
+ author = {Motasem Alfarra and Hani Itani and Alejandro Pardo and Shyma Alhuwaider and Merey Ramazanova and Juan C. Pérez and Zhipeng Cai and Matthias Müller and Bernard Ghanem},
+ title = {Evaluation of Test-Time Adaptation Under Computational Time Constraints},
+ year = {2023}
+}
+
+@article{author-year-efficient,
+ title = {Efficient Non-stationary Online Learning by Wavelets with Applications to Online Distribution Shift Adaptation}
+}
+
+@article{author-year-test,
+ title = {Test Time Adaptation With Regularized Loss for Weakly Supervised Salient Object Detection}
+}
+
+@article{author-year-ttt,
+ title = {TTT++: When Does Self-Supervised Test-Time Training Fail or Thrive?}
+}
+
+@article{brukhim-2020-online,
+ abstract = {Boosting is a widely used machine learning approach based on the idea of
+aggregating weak learning rules. While in statistical learning numerous
+boosting methods exist both in the realizable and agnostic settings, in online
+learning they exist only in the realizable case. In this work we provide the
+first agnostic online boosting algorithm; that is, given a weak learner with
+only marginally-better-than-trivial regret guarantees, our algorithm boosts it
+to a strong learner with sublinear regret.
+  Our algorithm is based on an abstract (and simple) reduction to online convex
+optimization, which efficiently converts an arbitrary online convex optimizer
+to an online booster.
+  Moreover, this reduction extends to the statistical as well as the online
+realizable settings, thus unifying the 4 cases of statistical/online and
+agnostic/realizable boosting.},
+ arxiv_url = {https://arxiv.org/pdf/2003.01150v1.pdf},
+ author = {Nataly Brukhim and Xinyi Chen and Elad Hazan and Shay Moran},
+ title = {Online Agnostic Boosting via Regret Minimization},
+ year = {2020}
+}
+
+@article{chen-2023-improved,
+ abstract = {The main challenge in domain generalization (DG) is to handle the
+distribution shift problem that lies between the training and test data. Recent
+studies suggest that test-time training (TTT), which adapts the learned model
+with test data, might be a promising solution to the problem. Generally, a TTT
+strategy hinges its performance on two main factors: selecting an appropriate
+auxiliary TTT task for updating and identifying reliable parameters to update
+during the test phase. Both previous arts and our experiments indicate that TTT
+may not improve but be detrimental to the learned model if those two factors
+are not properly considered. This work addresses those two factors by proposing
+an Improved Test-Time Adaptation (ITTA) method. First, instead of heuristically
+defining an auxiliary objective, we propose a learnable consistency loss for
+the TTT task, which contains learnable parameters that can be adjusted toward
+better alignment between our TTT task and the main prediction task. Second, we
+introduce additional adaptive parameters for the trained model, and we suggest
+only updating the adaptive parameters during the test phase. Through extensive
+experiments, we show that the proposed two strategies are beneficial for the
+learned model (see Figure 1), and ITTA could achieve superior performance to
+the current state-of-the-art methods on several DG benchmarks. Code is
+available at https://github.com/liangchen527/ITTA.},
+ arxiv_url = {https://arxiv.org/pdf/2304.04494v2.pdf},
+ author = {Liang Chen and Yong Zhang and Yibing Song and Ying Shan and Lingqiao Liu},
+ github_url = {https://github.com/liangchen527/ITTA},
+ title = {Improved Test-Time Adaptation for Domain Generalization},
+ year = {2023}
+}
+
+@article{goyal-2022-test,
+ abstract = {Test-time adaptation (TTA) refers to adapting neural networks to distribution
+shifts, with access to only the unlabeled test samples from the new domain at
+test-time. Prior TTA methods optimize over unsupervised objectives such as the
+entropy of model predictions in TENT [Wang et al., 2021], but it is unclear
+what exactly makes a good TTA loss. In this paper, we start by presenting a
+surprising phenomenon: if we attempt to meta-learn the best possible TTA loss
+over a wide class of functions, then we recover a function that is remarkably
+similar to (a temperature-scaled version of) the softmax-entropy employed by
+TENT. This only holds, however, if the classifier we are adapting is trained
+via cross-entropy; if trained via squared loss, a different best TTA loss
+emerges. To explain this phenomenon, we analyze TTA through the lens of the
+training losses's convex conjugate. We show that under natural conditions, this
+(unsupervised) conjugate function can be viewed as a good local approximation
+to the original supervised loss and indeed, it recovers the best losses found
+by meta-learning. This leads to a generic recipe that can be used to find a
+good TTA loss for any given supervised training loss function of a general
+class. Empirically, our approach consistently dominates other baselines over a
+wide range of benchmarks. Our approach is particularly of interest when applied
+to classifiers trained with novel loss functions, e.g., the recently-proposed
+PolyLoss, where it differs substantially from (and outperforms) an
+entropy-based loss. Further, we show that our approach can also be interpreted
+as a kind of self-training using a very specific soft label, which we refer to
+as the conjugate pseudolabel. Overall, our method provides a broad framework
+for better understanding and improving test-time adaptation. Code is available
+at https://github.com/locuslab/tta_conjugate.},
+ arxiv_url = {https://arxiv.org/pdf/2207.09640v2.pdf},
+ author = {Sachin Goyal and Mingjie Sun and Aditi Raghunathan and Zico Kolter},
+ title = {Test Time Adaptation via Conjugate Pseudo-labels},
+ year = {2022}
+}
+
+@article{gui-2024-active,
+ abstract = {Test-time adaptation (TTA) addresses distribution shifts for streaming test
+data in unsupervised settings. Currently, most TTA methods can only deal with
+minor shifts and rely heavily on heuristic and empirical studies.
+  To advance TTA under domain shifts, we propose the novel problem setting of
+active test-time adaptation (ATTA) that integrates active learning within the
+fully TTA setting.
+  We provide a learning theory analysis, demonstrating that incorporating
+limited labeled test instances enhances overall performances across test
+domains with a theoretical guarantee. We also present a sample entropy
+balancing for implementing ATTA while avoiding catastrophic forgetting (CF). We
+introduce a simple yet effective ATTA algorithm, known as SimATTA, using
+real-time sample selection techniques. Extensive experimental results confirm
+consistency with our theoretical analyses and show that the proposed ATTA
+method yields substantial performance improvements over TTA methods while
+maintaining efficiency and shares similar effectiveness to the more demanding
+active domain adaptation (ADA) methods. Our code is available at
+https://github.com/divelab/ATTA},
+ arxiv_url = {https://arxiv.org/pdf/2404.05094v1.pdf},
+ author = {Shurui Gui and Xiner Li and Shuiwang Ji},
+ github_url = {https://github.com/divelab/ATTA},
+ title = {Active Test-Time Adaptation: Theoretical Analyses and An Algorithm},
+ year = {2024}
+}
+
+@article{haghtalab-2022-oracle,
+ abstract = {In this paper, we study oracle-efficient algorithms for beyond worst-case
+analysis of online learning. We focus on two settings. First, the smoothed
+analysis setting of [RST11,HRS22] where an adversary is constrained to
+generating samples from distributions whose density is upper bounded by
+$1/\sigma$ times the uniform density. Second, the setting of $K$-hint
+transductive learning, where the learner is given access to $K$ hints per time
+step that are guaranteed to include the true instance. We give the first known
+oracle-efficient algorithms for both settings that depend only on the pseudo
+(or VC) dimension of the class and parameters $\sigma$ and $K$ that capture the
+power of the adversary. In particular, we achieve oracle-efficient regret
+bounds of $ \widetilde{O} ( \sqrt{T d\sigma^{-1}} ) $ and $ \widetilde{O} (
+\sqrt{T dK} ) $ for learning real-valued functions and $ O ( \sqrt{T
+d\sigma^{-\frac{1}{2}} } )$ for learning binary-valued functions. For the
+smoothed analysis setting, our results give the first oracle-efficient
+algorithm for online learning with smoothed adversaries [HRS22]. This contrasts
+the computational separation between online learning with worst-case
+adversaries and offline learning established by [HK16]. Our algorithms also
+achieve improved bounds for worst-case setting with small domains. In
+particular, we give an oracle-efficient algorithm with regret of $O ( \sqrt{T(d
+|\mathcal{X}|)^{1/2} })$, which is a refinement of the earlier $O (
+\sqrt{T|\mathcal{X}|})$ bound by [DS16].},
+ arxiv_url = {https://arxiv.org/pdf/2202.08549v3.pdf},
+ author = {Nika Haghtalab and Yanjun Han and Abhishek Shetty and Kunhe Yang},
+ title = {Oracle-Efficient Online Learning for Smoothed Adversaries},
+ year = {2022}
+}
+
+@article{hoang-2023-persistent,
+ abstract = {Current test-time adaptation (TTA) approaches aim to adapt a machine learning
+model to environments that change continuously. Yet, it is unclear whether TTA
+methods can maintain their adaptability over prolonged periods. To answer this
+question, we introduce a diagnostic setting - recurring TTA where environments
+not only change but also recur over time, creating an extensive data stream.
+This setting allows us to examine the error accumulation of TTA models, in the
+most basic scenario, when they are regularly exposed to previous testing
+environments. Furthermore, we simulate a TTA process on a simple yet
+representative $\epsilon$-perturbed Gaussian Mixture Model Classifier, deriving
+theoretical insights into the dataset- and algorithm-dependent factors
+contributing to gradual performance degradation. Our investigation leads us to
+propose persistent TTA (PeTTA), which senses when the model is diverging
+towards collapse and adjusts the adaptation strategy, striking a balance
+between the dual objectives of adaptation and model collapse prevention. The
+supreme stability of PeTTA over existing approaches, in the face of lifelong
+TTA scenarios, has been demonstrated over comprehensive experiments on various
+benchmarks. Our project page is available at https://hthieu166.github.io/petta.},
+ arxiv_url = {https://arxiv.org/pdf/2311.18193v4.pdf},
+ author = {Trung-Hieu Hoang and Duc Minh Vo and Minh N. Do},
+ github_url = {https://github.com/oripress/CCC},
+ title = {Persistent Test-time Adaptation in Recurring Testing Scenarios},
+ year = {2023}
+}
+
+@article{lim-2023-ttn,
+ abstract = {This paper proposes a novel batch normalization strategy for test-time
+adaptation. Recent test-time adaptation methods heavily rely on the modified
+batch normalization, i.e., transductive batch normalization (TBN), which
+calculates the mean and the variance from the current test batch rather than
+using the running mean and variance obtained from the source data, i.e.,
+conventional batch normalization (CBN). Adopting TBN that employs test batch
+statistics mitigates the performance degradation caused by the domain shift.
+However, re-estimating normalization statistics using test data depends on
+impractical assumptions that a test batch should be large enough and be drawn
+from i.i.d. stream, and we observed that the previous methods with TBN show
+critical performance drop without the assumptions. In this paper, we identify
+that CBN and TBN are in a trade-off relationship and present a new test-time
+normalization (TTN) method that interpolates the statistics by adjusting the
+importance between CBN and TBN according to the domain-shift sensitivity of
+each BN layer. Our proposed TTN improves model robustness to shifted domains
+across a wide range of batch sizes and in various realistic evaluation
+scenarios. TTN is widely applicable to other test-time adaptation methods that
+rely on updating model parameters via backpropagation. We demonstrate that
+adopting TTN further improves their performance and achieves state-of-the-art
+performance in various standard benchmarks.},
+ arxiv_url = {https://arxiv.org/pdf/2302.05155v2.pdf},
+ author = {Hyesu Lim and Byeonggeun Kim and Jaegul Choo and Sungha Choi},
+ title = {TTN: A Domain-Shift Aware Batch Normalization in Test-Time Adaptation},
+ year = {2023}
+}
+
+@article{song-2020-provably,
+ abstract = {The high sample complexity of reinforcement learning challenges its use in
+practice. A promising approach is to quickly adapt pre-trained policies to new
+environments. Existing methods for this policy adaptation problem typically
+rely on domain randomization and meta-learning, by sampling from some
+distribution of target environments during pre-training, and thus face
+difficulty on out-of-distribution target environments. We propose new
+model-based mechanisms that are able to make online adaptation in unseen target
+environments, by combining ideas from no-regret online learning and adaptive
+control. We prove that the approach learns policies in the target environment
+that can quickly recover trajectories from the source environment, and
+establish the rate of convergence in general settings. We demonstrate the
+benefits of our approach for policy adaptation in a diverse set of continuous
+control tasks, achieving the performance of state-of-the-art methods with much
+lower sample complexity.},
+ arxiv_url = {https://arxiv.org/pdf/2006.08051v1.pdf},
+ author = {Yuda Song and Aditi Mavalankar and Wen Sun and Sicun Gao},
+ title = {Provably Efficient Model-based Policy Adaptation},
+ year = {2020}
+}
+
+@article{summers-2019-four,
+ abstract = {A key component of most neural network architectures is the use of
+normalization layers, such as Batch Normalization. Despite its common use and
+large utility in optimizing deep architectures, it has been challenging both to
+generically improve upon Batch Normalization and to understand the
+circumstances that lend themselves to other enhancements. In this paper, we
+identify four improvements to the generic form of Batch Normalization and the
+circumstances under which they work, yielding performance gains across all
+batch sizes while requiring no additional computation during training. These
+contributions include proposing a method for reasoning about the current
+example in inference normalization statistics, fixing a training vs. inference
+discrepancy; recognizing and validating the powerful regularization effect of
+Ghost Batch Normalization for small and medium batch sizes; examining the
+effect of weight decay regularization on the scaling and shifting parameters
+gamma and beta; and identifying a new normalization algorithm for very small
+batch sizes by combining the strengths of Batch and Group Normalization. We
+validate our results empirically on six datasets: CIFAR-100, SVHN, Caltech-256,
+Oxford Flowers-102, CUB-2011, and ImageNet.},
+ arxiv_url = {https://arxiv.org/pdf/1906.03548v2.pdf},
+ author = {Cecilia Summers and Michael J. Dinneen},
+ title = {Four Things Everyone Should Know to Improve Batch Normalization},
+ year = {2019}
+}
+
+@article{sun-2019-test,
+ abstract = {In this paper, we propose Test-Time Training, a general approach for
+improving the performance of predictive models when training and test data come
+from different distributions. We turn a single unlabeled test sample into a
+self-supervised learning problem, on which we update the model parameters
+before making a prediction. This also extends naturally to data in an online
+stream. Our simple approach leads to improvements on diverse image
+classification benchmarks aimed at evaluating robustness to distribution
+shifts.},
+ arxiv_url = {https://arxiv.org/pdf/1909.13231v3.pdf},
+ author = {Yu Sun and Xiaolong Wang and Zhuang Liu and John Miller and Alexei A. Efros and Moritz Hardt},
+ title = {Test-Time Training with Self-Supervision for Generalization under Distribution Shifts},
+ year = {2019}
+}
+
+@article{tomar-2024-mixing,
+ abstract = {Recent test-time adaptation methods heavily rely on nuanced adjustments of
+batch normalization (BN) parameters. However, one critical assumption often
+goes overlooked: that of independently and identically distributed (i.i.d.)
+test batches with respect to unknown labels. This oversight leads to skewed BN
+statistics and undermines the reliability of the model under non-i.i.d.
+scenarios. To tackle this challenge, this paper presents a novel method termed
+'Un-Mixing Test-Time Normalization Statistics' (UnMix-TNS). Our method
+re-calibrates the statistics for each instance within a test batch by mixing it
+with multiple distinct statistics components, thus inherently simulating the
+i.i.d. scenario. The core of this method hinges on a distinctive online
+unmixing procedure that continuously updates these statistics components by
+incorporating the most similar instances from new test batches. Remarkably
+generic in its design, UnMix-TNS seamlessly integrates with a wide range of
+leading test-time adaptation methods and pre-trained architectures equipped
+with BN layers. Empirical evaluations corroborate the robustness of UnMix-TNS
+under varied scenarios-ranging from single to continual and mixed domain
+shifts, particularly excelling with temporally correlated test data and
+corrupted non-i.i.d. real-world streams. This adaptability is maintained even
+with very small batch sizes or single instances. Our results highlight
+UnMix-TNS's capacity to markedly enhance stability and performance across
+various benchmarks. Our code is publicly available at
+https://github.com/devavratTomar/unmixtns.},
+ arxiv_url = {https://arxiv.org/pdf/2401.08328v2.pdf},
+ author = {Devavrat Tomar and Guillaume Vray and Jean-Philippe Thiran and Behzad Bozorgtabar},
+ github_url = {https://github.com/devavratTomar/unmixtns},
+ title = {Un-Mixing Test-Time Normalization Statistics: Combatting Label Temporal Correlation},
+ year = {2024}
+}
+
+@article{wang-2020-tent,
+ abstract = {A model must adapt itself to generalize to new and different data during
+testing. In this setting of fully test-time adaptation the model has only the
+test data and its own parameters. We propose to adapt by test entropy
+minimization (tent): we optimize the model for confidence as measured by the
+entropy of its predictions. Our method estimates normalization statistics and
+optimizes channel-wise affine transformations to update online on each batch.
+Tent reduces generalization error for image classification on corrupted
+ImageNet and CIFAR-10/100 and reaches a new state-of-the-art error on
+ImageNet-C. Tent handles source-free domain adaptation on digit recognition
+from SVHN to MNIST/MNIST-M/USPS, on semantic segmentation from GTA to
+Cityscapes, and on the VisDA-C benchmark. These results are achieved in one
+epoch of test-time optimization without altering training.},
+ arxiv_url = {https://arxiv.org/pdf/2006.10726v3.pdf},
+ author = {Dequan Wang and Evan Shelhamer and Shaoteng Liu and Bruno Olshausen and Trevor Darrell},
+ github_url = {https://github.com/DequanWang/tent},
+ title = {Tent: Fully Test-Time Adaptation by Entropy Minimization},
+ year = {2020}
+}
+
+@article{yan-2020-towards,
+ abstract = {Batch Normalization (BN) is one of the most widely used techniques in Deep
+Learning field. But its performance can awfully degrade with insufficient batch
+size. This weakness limits the usage of BN on many computer vision tasks like
+detection or segmentation, where batch size is usually small due to the
+constraint of memory consumption. Therefore many modified normalization
+techniques have been proposed, which either fail to restore the performance of
+BN completely, or have to introduce additional nonlinear operations in
+inference procedure and increase huge consumption. In this paper, we reveal
+that there are two extra batch statistics involved in backward propagation of
+BN, on which has never been well discussed before. The extra batch statistics
+associated with gradients also can severely affect the training of deep neural
+network. Based on our analysis, we propose a novel normalization method, named
+Moving Average Batch Normalization (MABN). MABN can completely restore the
+performance of vanilla BN in small batch cases, without introducing any
+additional nonlinear operations in inference procedure. We prove the benefits
+of MABN by both theoretical analysis and experiments. Our experiments
+demonstrate the effectiveness of MABN in multiple computer vision tasks
+including ImageNet and COCO. The code has been released in
+https://github.com/megvii-model/MABN.},
+ arxiv_url = {https://arxiv.org/pdf/2001.06838v2.pdf},
+ author = {Junjie Yan and Ruosi Wan and Xiangyu Zhang and Wei Zhang and Yichen Wei and Jian Sun},
+ github_url = {https://github.com/megvii-model/MABN},
+ title = {Towards Stabilizing Batch Statistics in Backward Propagation of Batch Normalization},
+ year = {2020}
+}
+
+@article{yoo-2023-what,
+ abstract = {It is a well-known fact that the performance of deep learning models
+deteriorates when they encounter a distribution shift at test time. Test-time
+adaptation (TTA) algorithms have been proposed to adapt the model online while
+inferring test data. However, existing research predominantly focuses on
+classification tasks through the optimization of batch normalization layers or
+classification heads, but this approach limits its applicability to various
+model architectures like Transformers and makes it challenging to apply to
+other tasks, such as object detection. In this paper, we propose a novel online
+adaption approach for object detection in continually changing test domains,
+considering which part of the model to update, how to update it, and when to
+perform the update. By introducing architecture-agnostic and lightweight
+adaptor modules and only updating these while leaving the pre-trained backbone
+unchanged, we can rapidly adapt to new test domains in an efficient way and
+prevent catastrophic forgetting. Furthermore, we present a practical and
+straightforward class-wise feature aligning method for object detection to
+resolve domain shifts. Additionally, we enhance efficiency by determining when
+the model is sufficiently adapted or when additional adaptation is needed due
+to changes in the test distribution. Our approach surpasses baselines on widely
+used benchmarks, achieving improvements of up to 4.9\%p and 7.9\%p in mAP for
+COCO $\rightarrow$ COCO-corrupted and SHIFT, respectively, while maintaining
+about 20 FPS or higher.},
+ arxiv_url = {https://arxiv.org/pdf/2312.08875v1.pdf},
+ author = {Jayeon Yoo and Dongkwan Lee and Inseop Chung and Donghyun Kim and Nojun Kwak},
+ title = {What How and When Should Object Detectors Update in Continually Changing Test Domains?},
+ year = {2023}
+}
+
+@article{you-2023-efficient,
+ abstract = {Convolution-BatchNorm (ConvBN) blocks are integral components in various
+computer vision tasks and other domains. A ConvBN block can operate in three
+modes: Train, Eval, and Deploy. While the Train mode is indispensable for
+training models from scratch, the Eval mode is suitable for transfer learning
+and beyond, and the Deploy mode is designed for the deployment of models. This
+paper focuses on the trade-off between stability and efficiency in ConvBN
+blocks: Deploy mode is efficient but suffers from training instability; Eval
+mode is widely used in transfer learning but lacks efficiency. To solve the
+dilemma, we theoretically reveal the reason behind the diminished training
+stability observed in the Deploy mode. Subsequently, we propose a novel Tune
+mode to bridge the gap between Eval mode and Deploy mode. The proposed Tune
+mode is as stable as Eval mode for transfer learning, and its computational
+efficiency closely matches that of the Deploy mode. Through extensive
+experiments in object detection, classification, and adversarial example
+generation across $5$ datasets and $12$ model architectures, we demonstrate
+that the proposed Tune mode retains the performance while significantly
+reducing GPU memory footprint and training time, thereby contributing efficient
+ConvBN blocks for transfer learning and beyond. Our method has been integrated
+into both PyTorch (general machine learning framework) and MMCV/MMEngine
+(computer vision framework). Practitioners just need one line of code to enjoy
+our efficient ConvBN blocks thanks to PyTorch's builtin machine learning
+compilers.},
+ arxiv_url = {https://arxiv.org/pdf/2305.11624v2.pdf},
+ author = {Kaichao You and Guo Qin and Anchang Bao and Meng Cao and Ping Huang and Jiulong Shan and Mingsheng Long},
+ github_url = {https://github.com/facebookresearch/detectron2},
+ title = {Efficient ConvBN Blocks for Transfer Learning and Beyond},
+ year = {2023}
+}
+
+@article{yuan-2023-robust,
+ abstract = {Test-time adaptation (TTA) intends to adapt the pretrained model to test
+distributions with only unlabeled test data streams. Most of the previous TTA
+methods have achieved great success on simple test data streams such as
+independently sampled data from single or multiple distributions. However,
+these attempts may fail in dynamic scenarios of real-world applications like
+autonomous driving, where the environments gradually change and the test data
+is sampled correlatively over time. In this work, we explore such practical
+test data streams to deploy the model on the fly, namely practical test-time
+adaptation (PTTA). To do so, we elaborate a Robust Test-Time Adaptation (RoTTA)
+method against the complex data stream in PTTA. More specifically, we present a
+robust batch normalization scheme to estimate the normalization statistics.
+Meanwhile, a memory bank is utilized to sample category-balanced data with
+consideration of timeliness and uncertainty. Further, to stabilize the training
+procedure, we develop a time-aware reweighting strategy with a teacher-student
+model. Extensive experiments prove that RoTTA enables continual testtime
+adaptation on the correlatively sampled data streams. Our method is easy to
+implement, making it a good choice for rapid deployment. The code is publicly
+available at https://github.com/BIT-DA/RoTTA},
+ arxiv_url = {https://arxiv.org/pdf/2303.13899v1.pdf},
+ author = {Longhui Yuan and Binhui Xie and Shuang Li},
+ github_url = {https://github.com/BIT-DA/RoTTA},
+ title = {Robust Test-Time Adaptation in Dynamic Scenarios},
+ year = {2023}
+}
+
+@article{zhao-2023-delta,
+ abstract = {Fully test-time adaptation aims at adapting a pre-trained model to the test
+stream during real-time inference, which is urgently required when the test
+distribution differs from the training distribution. Several efforts have been
+devoted to improving adaptation performance. However, we find that two
+unfavorable defects are concealed in the prevalent adaptation methodologies
+like test-time batch normalization (BN) and self-learning. First, we reveal
+that the normalization statistics in test-time BN are completely affected by
+the currently received test samples, resulting in inaccurate estimates. Second,
+we show that during test-time adaptation, the parameter update is biased
+towards some dominant classes. In addition to the extensively studied test
+stream with independent and class-balanced samples, we further observe that the
+defects can be exacerbated in more complicated test environments, such as
+(time) dependent or class-imbalanced data. We observe that previous approaches
+work well in certain scenarios while show performance degradation in others due
+to their faults. In this paper, we provide a plug-in solution called DELTA for
+Degradation-freE fuLly Test-time Adaptation, which consists of two components:
+(i) Test-time Batch Renormalization (TBR), introduced to improve the estimated
+normalization statistics. (ii) Dynamic Online re-weighTing (DOT), designed to
+address the class bias within optimization. We investigate various test-time
+adaptation methods on three commonly used datasets with four scenarios, and a
+newly introduced real-world dataset. DELTA can help them deal with all
+scenarios simultaneously, leading to SOTA performance.},
+ arxiv_url = {https://arxiv.org/pdf/2301.13018v1.pdf},
+ author = {Bowen Zhao and Chen Chen and Shu-Tao Xia},
+ title = {DELTA: DEGRADATION-FREE FULLY TEST-TIME ADAPTATION},
+ year = {2023}
+}
+
+% ===========================================
+% REFERENCE CANDIDATES
+% Additional reference papers for context
+% ===========================================
+
+@article{author-year-mecta,
+ title = {Mecta: Memory-economic continual test-time model adaptation.}
+}
+
+@article{bartler-2021-meta,
+ abstract = {An unresolved problem in Deep Learning is the ability of neural networks to
+cope with domain shifts during test-time, imposed by commonly fixing network
+parameters after training. Our proposed method Meta Test-Time Training (MT3),
+however, breaks this paradigm and enables adaption at test-time. We combine
+meta-learning, self-supervision and test-time training to learn to adapt to
+unseen test distributions. By minimizing the self-supervised loss, we learn
+task-specific model parameters for different tasks. A meta-model is optimized
+such that its adaption to the different task-specific models leads to higher
+performance on those tasks. During test-time a single unlabeled image is
+sufficient to adapt the meta-model parameters. This is achieved by minimizing
+only the self-supervised loss component resulting in a better prediction for
+that image. Our approach significantly improves the state-of-the-art results on
+the CIFAR-10-Corrupted image classification benchmark. Our implementation is
+available on GitHub.},
+ arxiv_url = {https://arxiv.org/pdf/2103.16201v2.pdf},
+ author = {Alexander Bartler and Andre Bühler and Felix Wiewel and Mario Döbler and Bin Yang},
+ title = {Mt3: Meta test-time training for self- supervised test-time adaption.},
+ year = {2021}
+}
+
+@article{bartler-2022-ttaps,
+ abstract = {Nowadays, deep neural networks outperform humans in many tasks. However, if
+the input distribution drifts away from the one used in training, their
+performance drops significantly. Recently published research has shown that
+adapting the model parameters to the test sample can mitigate this performance
+degradation. In this paper, we therefore propose a novel modification of the
+self-supervised training algorithm SwAV that adds the ability to adapt to
+single test samples. Using the provided prototypes of SwAV and our derived
+test-time loss, we align the representation of unseen test samples with the
+self-supervised learned prototypes. We show the success of our method on the
+common benchmark dataset CIFAR10-C.},
+ arxiv_url = {https://arxiv.org/pdf/2205.08731v1.pdf},
+ author = {Alexander Bartler and Florian Bender and Felix Wiewel and Bin Yang},
+ title = {Ttaps: Test-time adaption by aligning prototypes using self-supervision.},
+ year = {2022}
+}
+
+@article{boudiaf-2022-parameter,
+ abstract = {Training state-of-the-art vision models has become prohibitively expensive
+for researchers and practitioners. For the sake of accessibility and resource
+reuse, it is important to focus on adapting these models to a variety of
+downstream scenarios. An interesting and practical paradigm is online test-time
+adaptation, according to which training data is inaccessible, no labelled data
+from the test distribution is available, and adaptation can only happen at test
+time and on a handful of samples. In this paper, we investigate how test-time
+adaptation methods fare for a number of pre-trained models on a variety of
+real-world scenarios, significantly extending the way they have been originally
+evaluated. We show that they perform well only in narrowly-defined experimental
+setups and sometimes fail catastrophically when their hyperparameters are not
+selected for the same scenario in which they are being tested. Motivated by the
+inherent uncertainty around the conditions that will ultimately be encountered
+at test time, we propose a particularly "conservative" approach, which
+addresses the problem with a Laplacian Adjusted Maximum-likelihood Estimation
+(LAME) objective. By adapting the model's output (not its parameters), and
+solving our objective with an efficient concave-convex procedure, our approach
+exhibits a much higher average accuracy across scenarios than existing methods,
+while being notably faster and have a much lower memory footprint. The code is
+available at https://github.com/fiveai/LAME.},
+ arxiv_url = {https://arxiv.org/pdf/2201.05718v2.pdf},
+ author = {Malik Boudiaf and Romain Mueller and Ismail Ben Ayed and Luca Bertinetto},
+ title = {Parameter-free online test-time adaptation.},
+ year = {2022}
+}
+
+@article{brahma-2022-probabilistic,
+ abstract = {Test-time adaptation (TTA) is the problem of updating a pre-trained source
+model at inference time given test input(s) from a different target domain.
+Most existing TTA approaches assume the setting in which the target domain is
+stationary, i.e., all the test inputs come from a single target domain.
+However, in many practical settings, the test input distribution might exhibit
+a lifelong/continual shift over time. Moreover, existing TTA approaches also
+lack the ability to provide reliable uncertainty estimates, which is crucial
+when distribution shifts occur between the source and target domain. To address
+these issues, we present PETAL (Probabilistic lifElong Test-time Adaptation
+with seLf-training prior), which solves lifelong TTA using a probabilistic
+approach, and naturally results in (1) a student-teacher framework, where the
+teacher model is an exponential moving average of the student model, and (2)
+regularizing the model updates at inference time using the source model as a
+regularizer. To prevent model drift in the lifelong/continual TTA setting, we
+also propose a data-driven parameter restoration technique which contributes to
+reducing the error accumulation and maintaining the knowledge of recent domains
+by restoring only the irrelevant parameters. In terms of predictive error rate
+as well as uncertainty based metrics such as Brier score and negative
+log-likelihood, our method achieves better results than the current
+state-of-the-art for online lifelong test-time adaptation across various
+benchmarks, such as CIFAR-10C, CIFAR-100C, ImageNetC, and ImageNet3DCC
+datasets. The source code for our approach is accessible at
+https://github.com/dhanajitb/petal.},
+ arxiv_url = {https://arxiv.org/pdf/2212.09713v2.pdf},
+ author = {Dhanajit Brahma and Piyush Rai},
+ title = {A probabilistic frame- work for lifelong test-time adaptation.},
+ year = {2022}
+}
+
+@article{chen-2022-adaptformer,
+ abstract = {Pretraining Vision Transformers (ViTs) has achieved great success in visual
+recognition. A following scenario is to adapt a ViT to various image and video
+recognition tasks. The adaptation is challenging because of heavy computation
+and memory storage. Each model needs an independent and complete finetuning
+process to adapt to different tasks, which limits its transferability to
+different visual domains. To address this challenge, we propose an effective
+adaptation approach for Transformer, namely AdaptFormer, which can adapt the
+pre-trained ViTs into many different image and video tasks efficiently. It
+possesses several benefits more appealing than prior arts. Firstly, AdaptFormer
+introduces lightweight modules that only add less than 2% extra parameters to a
+ViT, while it is able to increase the ViT's transferability without updating
+its original pre-trained parameters, significantly outperforming the existing
+100\% fully fine-tuned models on action recognition benchmarks. Secondly, it
+can be plug-and-play in different Transformers and scalable to many visual
+tasks. Thirdly, extensive experiments on five image and video datasets show
+that AdaptFormer largely improves ViTs in the target domains. For example, when
+updating just 1.5% extra parameters, it achieves about 10% and 19% relative
+improvement compared to the fully fine-tuned models on Something-Something~v2
+and HMDB51, respectively. Code is available at
+https://github.com/ShoufaChen/AdaptFormer.},
+ arxiv_url = {https://arxiv.org/pdf/2205.13535v3.pdf},
+ author = {Shoufa Chen and Chongjian Ge and Zhan Tong and Jiangliu Wang and Yibing Song and Jue Wang and Ping Luo},
+ title = {Adaptformer: Adapting vision transformers for scalable visual recognition.},
+ year = {2022}
+}
+
+@article{he-2015-deep,
+ abstract = {Deeper neural networks are more difficult to train. We present a residual
+learning framework to ease the training of networks that are substantially
+deeper than those used previously. We explicitly reformulate the layers as
+learning residual functions with reference to the layer inputs, instead of
+learning unreferenced functions. We provide comprehensive empirical evidence
+showing that these residual networks are easier to optimize, and can gain
+accuracy from considerably increased depth. On the ImageNet dataset we evaluate
+residual nets with a depth of up to 152 layers---8x deeper than VGG nets but
+still having lower complexity. An ensemble of these residual nets achieves
+3.57% error on the ImageNet test set. This result won the 1st place on the
+ILSVRC 2015 classification task. We also present analysis on CIFAR-10 with 100
+and 1000 layers.
+  The depth of representations is of central importance for many visual
+recognition tasks. Solely due to our extremely deep representations, we obtain
+a 28% relative improvement on the COCO object detection dataset. Deep residual
+nets are foundations of our submissions to ILSVRC & COCO 2015 competitions,
+where we also won the 1st places on the tasks of ImageNet detection, ImageNet
+localization, COCO detection, and COCO segmentation.},
+ arxiv_url = {https://arxiv.org/pdf/1512.03385v1.pdf},
+ author = {Kaiming He and Xiangyu Zhang and Shaoqing Ren and Jian Sun},
+ title = {Deep residual learning for image recognition.},
+ year = {2015}
+}
+
+@article{hendrycks-2019-benchmarking,
+ abstract = {In this paper we establish rigorous benchmarks for image classifier
+robustness. Our first benchmark, ImageNet-C, standardizes and expands the
+corruption robustness topic, while showing which classifiers are preferable in
+safety-critical applications. Then we propose a new dataset called ImageNet-P
+which enables researchers to benchmark a classifier's robustness to common
+perturbations. Unlike recent robustness research, this benchmark evaluates
+performance on common corruptions and perturbations not worst-case adversarial
+perturbations. We find that there are negligible changes in relative corruption
+robustness from AlexNet classifiers to ResNet classifiers. Afterward we
+discover ways to enhance corruption and perturbation robustness. We even find
+that a bypassed adversarial defense provides substantial common perturbation
+robustness. Together our benchmarks may aid future work toward networks that
+robustly generalize.},
+ arxiv_url = {https://arxiv.org/pdf/1903.12261v1.pdf},
+ author = {Dan Hendrycks and Thomas Dietterich},
+ title = {Benchmarking neu- ral network robustness to common corruptions and perturba- tions.},
+ year = {2019}
+}
+
+@article{hu-2021-lora,
+ abstract = {An important paradigm of natural language processing consists of large-scale
+pre-training on general domain data and adaptation to particular tasks or
+domains. As we pre-train larger models, full fine-tuning, which retrains all
+model parameters, becomes less feasible. Using GPT-3 175B as an example --
+deploying independent instances of fine-tuned models, each with 175B
+parameters, is prohibitively expensive. We propose Low-Rank Adaptation, or
+LoRA, which freezes the pre-trained model weights and injects trainable rank
+decomposition matrices into each layer of the Transformer architecture, greatly
+reducing the number of trainable parameters for downstream tasks. Compared to
+GPT-3 175B fine-tuned with Adam, LoRA can reduce the number of trainable
+parameters by 10,000 times and the GPU memory requirement by 3 times. LoRA
+performs on-par or better than fine-tuning in model quality on RoBERTa,
+DeBERTa, GPT-2, and GPT-3, despite having fewer trainable parameters, a higher
+training throughput, and, unlike adapters, no additional inference latency. We
+also provide an empirical investigation into rank-deficiency in language model
+adaptation, which sheds light on the efficacy of LoRA. We release a package
+that facilitates the integration of LoRA with PyTorch models and provide our
+implementations and model checkpoints for RoBERTa, DeBERTa, and GPT-2 at
+https://github.com/microsoft/LoRA.},
+ arxiv_url = {https://arxiv.org/pdf/2106.09685v2.pdf},
+ author = {Edward J. Hu and Yelong Shen and Phillip Wallis and Zeyuan Allen-Zhu and Yuanzhi Li and Shean Wang and Lu Wang and Weizhu Chen},
+ title = {Lora: Low-rank adaptation of large language models.},
+ year = {2021}
+}
+
+@article{ioffe-2015-batch,
+ abstract = {Training Deep Neural Networks is complicated by the fact that the
+distribution of each layer's inputs changes during training, as the parameters
+of the previous layers change. This slows down the training by requiring lower
+learning rates and careful parameter initialization, and makes it notoriously
+hard to train models with saturating nonlinearities. We refer to this
+phenomenon as internal covariate shift, and address the problem by normalizing
+layer inputs. Our method draws its strength from making normalization a part of
+the model architecture and performing the normalization for each training
+mini-batch. Batch Normalization allows us to use much higher learning rates and
+be less careful about initialization. It also acts as a regularizer, in some
+cases eliminating the need for Dropout. Applied to a state-of-the-art image
+classification model, Batch Normalization achieves the same accuracy with 14
+times fewer training steps, and beats the original model by a significant
+margin. Using an ensemble of batch-normalized networks, we improve upon the
+best published result on ImageNet classification: reaching 4.9% top-5
+validation error (and 4.8% test error), exceeding the accuracy of human raters.},
+ arxiv_url = {https://arxiv.org/pdf/1502.03167v3.pdf},
+ author = {Sergey Ioffe and Christian Szegedy},
+ title = {Batch normalization: Accelerating deep network training by reducing internal co- variate shift.},
+ year = {2015}
+}
+
+@article{jang-2022-test,
+ abstract = {Test-time adaptation (TTA) aims to adapt a trained classifier using online
+unlabeled test data only, without any information related to the training
+procedure. Most existing TTA methods adapt the trained classifier using the
+classifier's prediction on the test data as pseudo-label. However, under
+test-time domain shift, accuracy of the pseudo labels cannot be guaranteed, and
+thus the TTA methods often encounter performance degradation at the adapted
+classifier. To overcome this limitation, we propose a novel test-time
+adaptation method, called Test-time Adaptation via Self-Training with nearest
+neighbor information (TAST), which is composed of the following procedures: (1)
+adds trainable adaptation modules on top of the trained feature extractor; (2)
+newly defines a pseudo-label distribution for the test data by using the
+nearest neighbor information; (3) trains these modules only a few times during
+test time to match the nearest neighbor-based pseudo label distribution and a
+prototype-based class distribution for the test data; and (4) predicts the
+label of test data using the average predicted class distribution from these
+modules. The pseudo-label generation is based on the basic intuition that a
+test data and its nearest neighbor in the embedding space are likely to share
+the same label under the domain shift. By utilizing multiple randomly
+initialized adaptation modules, TAST extracts useful information for the
+classification of the test data under the domain shift, using the nearest
+neighbor information. TAST showed better performance than the state-of-the-art
+TTA methods on two standard benchmark tasks, domain generalization, namely
+VLCS, PACS, OfficeHome, and TerraIncognita, and image corruption, particularly
+CIFAR-10/100C.},
+ arxiv_url = {https://arxiv.org/pdf/2207.10792v2.pdf},
+ author = {Minguk Jang and Sae-Young Chung and Hye Won Chung},
+ title = {Test- time adaptation via self-training with nearest neighbor infor- mation.},
+ year = {2022}
+}
+
+@article{jung-2022-cafa,
+ abstract = {Despite recent advancements in deep learning, deep neural networks continue
+to suffer from performance degradation when applied to new data that differs
+from training data. Test-time adaptation (TTA) aims to address this challenge
+by adapting a model to unlabeled data at test time. TTA can be applied to
+pretrained networks without modifying their training procedures, enabling them
+to utilize a well-formed source distribution for adaptation. One possible
+approach is to align the representation space of test samples to the source
+distribution (\textit{i.e.,} feature alignment). However, performing feature
+alignment in TTA is especially challenging in that access to labeled source
+data is restricted during adaptation. That is, a model does not have a chance
+to learn test data in a class-discriminative manner, which was feasible in
+other adaptation tasks (\textit{e.g.,} unsupervised domain adaptation) via
+supervised losses on the source data. Based on this observation, we propose a
+simple yet effective feature alignment loss, termed as Class-Aware Feature
+Alignment (CAFA), which simultaneously 1) encourages a model to learn target
+representations in a class-discriminative manner and 2) effectively mitigates
+the distribution shifts at test time. Our method does not require any
+hyper-parameters or additional losses, which are required in previous
+approaches. We conduct extensive experiments on 6 different datasets and show
+our proposed method consistently outperforms existing baselines.},
+ arxiv_url = {https://arxiv.org/pdf/2206.00205v3.pdf},
+ author = {Sanghun Jung and Jungsoo Lee and Nanhee Kim and Amirreza Shaban and Byron Boots and Jaegul Choo},
+ title = {Cafa: Class-aware fea- ture alignment for test-time adaptation.},
+ year = {2022}
+}
