@@ -538,6 +538,68 @@
       "title": "Graph Lottery Ticket Automated"
     }
   ],
+  "reference_research_study_list": [
+    {
+      "title": "The nonstochastic multiarmed bandit problem"
+    },
+    {
+      "title": "Layer normalization"
+    },
+    {
+      "title": "Relational inductive biases, deep learning, and graph networks"
+    },
+    {
+      "title": "A survey of online experiment design with the stochastic multi-armed bandit"
+    },
+    {
+      "title": "Stochastic training of graph convolutional networks with variance reduction"
+    },
+    {
+      "title": "Fastgcn: fast learning with graph convolutional networks via importance sampling"
+    },
+    {
+      "title": "Cluster-gcn: An efﬁcient algorithm for training deep and large graph convolutional networks"
+    },
+    {
+      "title": "Discriminative embeddings of latent variable models for structured data"
+    },
+    {
+      "title": "Protein interface prediction using graph convo- lutional networks"
+    },
+    {
+      "title": "Dependent rounding and its applications to approximation algorithms"
+    },
+    {
+      "title": "Inductive representation learning on large graphs"
+    },
+    {
+      "title": "Cash-out user detection based on attributed heterogeneous information network with a hierarchical attention mechanism"
+    },
+    {
+      "title": "Open graph benchmark: Datasets for machine learning on graphs"
+    },
+    {
+      "title": "Adaptive sampling towards fast graph represen- tation learning"
+    },
+    {
+      "title": "Semi-supervised classiﬁcation with graph convolutional networks"
+    },
+    {
+      "title": "Heterogeneous graph neural networks for malicious account detection"
+    },
+    {
+      "title": "Geniepath: Graph neural networks with adaptive receptive paths"
+    },
+    {
+      "title": "Stochastic optimization with bandit sampling"
+    },
+    {
+      "title": "Modeling relational data with graph convolutional networks"
+    },
+    {
+      "title": "Collective classiﬁcation in network data"
+    }
+  ],
   "new_method": {
     "method": "{\n    \"Open Problems\": \"1. Training-time sparsifiers for GATs do not adapt to the continual drift of node embeddings, so LSH buckets built once may become sub-optimal.\\n2. Existing sparse-attention methods give guarantees on the expectation of the soft-max outputs, but not on their worst-case deviation; this blocks adoption in safety-critical settings.\\n3. Memoryless sampling schemes still need to know per-bucket cardinalities to renormalise probabilities; for web-scale graphs this meta-data can dominate memory.\\n4. Inference sparsity is treated as a fixed pattern; graceful fallback to dense attention when the variance/ error bound is violated has not been explored.\\n5. Current evaluations stop at ~10^7 nodes and do not assess scalability to hundred-million-scale graphs nor to mixed-precision / quantised deployments.\\n\",\n    \"Methods\": \"We propose SAFE-VALS: Safety-aware, Adaptive, Feature-evolving Variance-bounded LSH sparsification for Graph Attention.\\nA. Meta-learned Hashing.\\n   • Replace the fixed linear projection in VALS-GAT with a two-layer MLP h_θ that is trained jointly with the GNN by straight-through Gumbel rounding.  This keeps the O(1) hashing cost while letting buckets track drifting embeddings.\\n   • Every Δ epochs the parameters θ are frozen and distilled into a single 32-bit vector using Product Quantisation so that inference uses only integer arithmetic.\\nB. Sketch-based Cardinality Estimation.\\n   • A Count–Min sketch (width 2^12, depth 4) keeps approximate bucket sizes on the fly; it needs <1 MB regardless of |E| and provides unbiased p̂_{vu}=k/ĉ_b.\\nC. Worst-case Soft-max Deviation Guarantee.\\n   • We derive a tail bound using Bennett’s inequality:  P(|ã̂_vu−ã_vu|>ε)≤exp(−ε²p̂_{vu}/(2α_max²)).  The edge mask is accepted only if the bound is below δ (user-set, e.g. 10^{-6}); otherwise that node automatically reverts to dense attention for this mini-batch, ensuring safety.\\nD. Continual Bucket Pruning.\\n   • Buckets whose learnable score s_b falls below γ·median(s) for T_prune consecutive epochs are merged with their nearest neighbour in hash space; this reduces the learned state over time.\\nE. Template Sharing across Heads.\\n   • The k best edges per bucket are selected once and reused across all heads, then perturbed by a lightweight Bloom-filter mask unique to each head (4 bits/edge) to introduce diversity at negligible cost.\\nF. Progressive Dual-phase Freezing.\\n   • Phase-I (epochs 1…T_f) trains with adaptive SAFE-VALS.\\n   • Phase-II performs a single global importance sampling pass to pick the top-K templates per layer and stores them as CSR lists; both GPU and CPU inference operators are generated automatically.\\nG. Python-only prototype relies on PyTorch+PyG; CountMin and Bloom filters are pure-torch ops so the whole pipeline is runnable on commodity hardware.\\n\",\n    \"Experimental Setup\": \"Datasets: Cora, PubMed, Reddit, ogbn-products, ogbn-papers100M (111 M nodes, 3.2 B edges) and synthetic Power-law-100M to stress memory.\\nModels: 2-layer GAT (8 heads, 8-d) and 3-layer GATv2 (16 heads), plus GPS-Transformer layer as drop-in.\\nBaselines: Full GAT, GraphSAINT-GAT, BRSC-GAT, original VALS-GAT, GST, and NATTEN fused kernel.\\nMetrics:\\n • Accuracy / ROC-AUC.\\n • Training wall-clock & GPU FLOPs.\\n • Full-graph inference latency (single A100) and CPU latency (16-core).\\n • Peak GPU/CPU memory.\\n • Max observed soft-max deviation vs ε bound (should never exceed).\\n • Sketch error (|ĉ_b−|B|| / |B|).\\nSafety settings: ε∈{0.01,0.05}, δ=10^{-6}.\\nAblations: disable meta-learned hash; disable sketch; disable safety fallback; single-phase freeze; template-sharing off.\\nAll runs 5 seeds; early stop on validation; mixed-precision ON.\\n\",\n    \"Experimental Code\": \"# SAFE-VALS core (simplified)\\nclass HashMLP(torch.nn.Module):\\n    def __init__(self, d_in, d_hid=32, buckets=4096):\\n        super().__init__(); self.buckets=buckets\\n        self.mlp=torch.nn.Sequential(\\n            torch.nn.Linear(2*d_in,d_hid),torch.nn.ReLU(),\\n            torch.nn.Linear(d_hid,1))\\n    def forward(self,x_i,x_j):\\n        z=torch.cat([x_i,x_j],-1)\\n        logits=self.mlp(z)\\n        h=((self.buckets*torch.sigmoid(logits)).round()).long()\\n        return h.squeeze(-1)\\n\\nclass CountMin:\\n    def __init__(self,w=4096,d=4):\\n        self.w,self.d=w,d; self.table=torch.zeros(d,w,dtype=torch.int32)\\n        self.a=torch.randint(1,1<<31,(d,)); self.b=torch.randint(0,1<<31,(d,))\\n    def add(self,keys):\\n        for r in range(self.d):\\n            idx=((self.a[r]*keys+self.b[r])%self.w).long()\\n            self.table[r,idx]+=1\\n    def query(self,keys):\\n        est=[]\\n        for r in range(self.d):\\n            idx=((self.a[r]*keys+self.b[r])%self.w).long()\\n            est.append(self.table[r,idx])\\n        return torch.stack(est).min(0).values.float()\\n\\nclass SAFEVALSLayer(torch.nn.Module):\\n    def __init__(self,d_in,d_out,heads,k,buckets):\\n        super().__init__(); self.k=k; self.heads=heads\\n        self.hash=HashMLP(d_in,buckets=buckets)\\n        self.cm=CountMin(w=buckets)\\n        self.score=torch.nn.Parameter(torch.zeros(buckets))\\n        self.conv=GATConv(d_in,d_out//heads,heads=heads,add_self_loops=False)\\n    def forward(self,x,edge_index):\\n        i,j=edge_index\\n        b=self.hash(x[i],x[j])\\n        self.cm.add(b)                       # streaming update\\n        head_sel=torch.zeros(edge_index.size(1),dtype=torch.bool,device=x.device)\\n        # template sharing – one mask reused across heads\\n        topk=torch.topk(self.score[b],self.k,sorted=False).indices\\n        head_sel[topk]=True\\n        p=self.k/(self.cm.query(b[topk])+1e-6)\\n        weight=head_sel.float()/p.clamp(min=1e-3)\\n        # safety check\\n        alpha_max=1.0\\n        eps=0.05; delta=1e-6\\n        safe=(torch.exp(-eps**2*p/(2*alpha_max**2))<delta)\\n        if not safe.all():  # fallback\\n            return self.conv((x,x),edge_index)\\n        return self.conv((x,x),edge_index,edge_weight=weight)\\n\",\n    \"Expected Result\": \"• Training speed-up vs dense GAT: 1.9× on Reddit, 1.5× on products, 1.3× on papers100M.\\n• Inference latency ↓2.6× GPU, ↓3.1× CPU.\\n• Memory ↓45-60% training, ↓65% inference.\\n• Accuracy drop ≤0.3% (ε=0.05); for ε=0.01 drop ≤0.1%.\\n• No violation of soft-max deviation bound in 10^7 monitored batches.\\n• Sketch relative error <3%.\\n• Adaptive hashing adds +0.3-0.5% accuracy over static LSH and saves another 10% FLOPs.\\n\",\n    \"Expected Conclusion\": \"SAFE-VALS demonstrates that safety-aware, meta-learned hashing with sketch-based statistics can deliver rigorous error guarantees while accelerating both training and inference of attention-based GNNs on hundred-million-scale graphs using pure Python.  The combination of theoretical worst-case bounds and automatic dense fallback makes the method deployable in risk-sensitive domains; template sharing and continual bucket pruning further cut cost without extra bookkeeping.  SAFE-VALS thus closes the gap between practical scalability and provable reliability for sparse graph attention.\"\n}",
     "experimental_design": {
