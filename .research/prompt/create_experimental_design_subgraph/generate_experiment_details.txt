@@ -1,0 +1,141 @@
+
+Input:
+You are a cutting-edge AI researcher. Based on the new method described in # New Methods and the experimental policy outlined in # Experiment Strategy, please follow the instructions below and provide a detailed elaboration of the experimental content.
+
+# Instructions
+- For each experiment listed in “Experiment Strategy,” output the detailed experimental plan.
+- Design the details of each experiment assuming the execution environment specified in “Experimental Environment.”
+- The experimental details should include the following:
+    - Machine learning / deep learning models to be used
+        - If necessary, also include baseline models.
+    - Datasets
+    - Dataset preprocessing methods
+    - Data splitting method (train/val/test, cross-validation)
+    - Number of repetitions (number of seeds), averaging method, and selection criteria (best-val, last, early stopping)
+    - Evaluation metrics
+        - Primary and secondary metrics
+        - Examples: Accuracy / F1 / AUROC (classification), RMSE / MAE (regression), mAP (detection), mIoU (segmentation), BLEU / ROUGE / METEOR (generation), NDCG / MRR (ranking), ECE / Brier Score (calibration)
+    - Comparisons
+        - Prior methods (strong baselines, SOTA, simple baselines), etc.
+        - If there are implementation or configuration differences, note the adjustments in footnotes.
+    - Methods for analyzing important hyperparameters (e.g., learning rate, temperature, k, thresholds)
+    - Methods for assessing robustness
+        - Resistance to noise injection, distribution shift (OOD), adversarial perturbations, and domain transfer
+    - Computation of FLOPs, training/inference time, memory usage, and cost / wall-clock time
+    - Example experimental code
+- In addition, describe the experimental details as thoroughly as possible. It is acceptable if the output is long.
+- Avoid excessive redundancy across experiments. When a single experiment can cover multiple validation items, integrate them appropriately.
+- NO-FALLBACK CONSTRAINT: Never suggest using synthetic/dummy/placeholder data - if real datasets are unavailable, the experiment must terminate with clear error messages.
+- "Reference Information from Previous Iteration"
+
+## Output Format
+Please provide:
+- experiment_details: Detailed experimental plan following all the instructions above
+- expected_models: A list of specific model names/architectures that will be used in the experiments (e.g., ["ResNet-50", "BERT-base", "GPT-3.5-turbo"])
+- expected_datasets: A list of specific dataset names that will be used in the experiments (e.g., ["CIFAR-10", "ImageNet", "IMDB Reviews"])
+
+
+# Experimental Environment
+NVIDIA A100
+VRAM：80GB
+RAM：2048 GB
+
+# Current Research Method (Target for Experiment Design)
+{
+    "Open Problems": "1. Training-time sparsifiers for GATs do not adapt to the continual drift of node embeddings, so LSH buckets built once may become sub-optimal.\n2. Existing sparse-attention methods give guarantees on the expectation of the soft-max outputs, but not on their worst-case deviation; this blocks adoption in safety-critical settings.\n3. Memoryless sampling schemes still need to know per-bucket cardinalities to renormalise probabilities; for web-scale graphs this meta-data can dominate memory.\n4. Inference sparsity is treated as a fixed pattern; graceful fallback to dense attention when the variance/ error bound is violated has not been explored.\n5. Current evaluations stop at ~10^7 nodes and do not assess scalability to hundred-million-scale graphs nor to mixed-precision / quantised deployments.\n",
+    "Methods": "We propose SAFE-VALS: Safety-aware, Adaptive, Feature-evolving Variance-bounded LSH sparsification for Graph Attention.\nA. Meta-learned Hashing.\n   • Replace the fixed linear projection in VALS-GAT with a two-layer MLP h_θ that is trained jointly with the GNN by straight-through Gumbel rounding.  This keeps the O(1) hashing cost while letting buckets track drifting embeddings.\n   • Every Δ epochs the parameters θ are frozen and distilled into a single 32-bit vector using Product Quantisation so that inference uses only integer arithmetic.\nB. Sketch-based Cardinality Estimation.\n   • A Count–Min sketch (width 2^12, depth 4) keeps approximate bucket sizes on the fly; it needs <1 MB regardless of |E| and provides unbiased p̂_{vu}=k/ĉ_b.\nC. Worst-case Soft-max Deviation Guarantee.\n   • We derive a tail bound using Bennett’s inequality:  P(|ã̂_vu−ã_vu|>ε)≤exp(−ε²p̂_{vu}/(2α_max²)).  The edge mask is accepted only if the bound is below δ (user-set, e.g. 10^{-6}); otherwise that node automatically reverts to dense attention for this mini-batch, ensuring safety.\nD. Continual Bucket Pruning.\n   • Buckets whose learnable score s_b falls below γ·median(s) for T_prune consecutive epochs are merged with their nearest neighbour in hash space; this reduces the learned state over time.\nE. Template Sharing across Heads.\n   • The k best edges per bucket are selected once and reused across all heads, then perturbed by a lightweight Bloom-filter mask unique to each head (4 bits/edge) to introduce diversity at negligible cost.\nF. Progressive Dual-phase Freezing.\n   • Phase-I (epochs 1…T_f) trains with adaptive SAFE-VALS.\n   • Phase-II performs a single global importance sampling pass to pick the top-K templates per layer and stores them as CSR lists; both GPU and CPU inference operators are generated automatically.\nG. Python-only prototype relies on PyTorch+PyG; CountMin and Bloom filters are pure-torch ops so the whole pipeline is runnable on commodity hardware.\n",
+    "Experimental Setup": "Datasets: Cora, PubMed, Reddit, ogbn-products, ogbn-papers100M (111 M nodes, 3.2 B edges) and synthetic Power-law-100M to stress memory.\nModels: 2-layer GAT (8 heads, 8-d) and 3-layer GATv2 (16 heads), plus GPS-Transformer layer as drop-in.\nBaselines: Full GAT, GraphSAINT-GAT, BRSC-GAT, original VALS-GAT, GST, and NATTEN fused kernel.\nMetrics:\n • Accuracy / ROC-AUC.\n • Training wall-clock & GPU FLOPs.\n • Full-graph inference latency (single A100) and CPU latency (16-core).\n • Peak GPU/CPU memory.\n • Max observed soft-max deviation vs ε bound (should never exceed).\n • Sketch error (|ĉ_b−|B|| / |B|).\nSafety settings: ε∈{0.01,0.05}, δ=10^{-6}.\nAblations: disable meta-learned hash; disable sketch; disable safety fallback; single-phase freeze; template-sharing off.\nAll runs 5 seeds; early stop on validation; mixed-precision ON.\n",
+    "Experimental Code": "# SAFE-VALS core (simplified)\nclass HashMLP(torch.nn.Module):\n    def __init__(self, d_in, d_hid=32, buckets=4096):\n        super().__init__(); self.buckets=buckets\n        self.mlp=torch.nn.Sequential(\n            torch.nn.Linear(2*d_in,d_hid),torch.nn.ReLU(),\n            torch.nn.Linear(d_hid,1))\n    def forward(self,x_i,x_j):\n        z=torch.cat([x_i,x_j],-1)\n        logits=self.mlp(z)\n        h=((self.buckets*torch.sigmoid(logits)).round()).long()\n        return h.squeeze(-1)\n\nclass CountMin:\n    def __init__(self,w=4096,d=4):\n        self.w,self.d=w,d; self.table=torch.zeros(d,w,dtype=torch.int32)\n        self.a=torch.randint(1,1<<31,(d,)); self.b=torch.randint(0,1<<31,(d,))\n    def add(self,keys):\n        for r in range(self.d):\n            idx=((self.a[r]*keys+self.b[r])%self.w).long()\n            self.table[r,idx]+=1\n    def query(self,keys):\n        est=[]\n        for r in range(self.d):\n            idx=((self.a[r]*keys+self.b[r])%self.w).long()\n            est.append(self.table[r,idx])\n        return torch.stack(est).min(0).values.float()\n\nclass SAFEVALSLayer(torch.nn.Module):\n    def __init__(self,d_in,d_out,heads,k,buckets):\n        super().__init__(); self.k=k; self.heads=heads\n        self.hash=HashMLP(d_in,buckets=buckets)\n        self.cm=CountMin(w=buckets)\n        self.score=torch.nn.Parameter(torch.zeros(buckets))\n        self.conv=GATConv(d_in,d_out//heads,heads=heads,add_self_loops=False)\n    def forward(self,x,edge_index):\n        i,j=edge_index\n        b=self.hash(x[i],x[j])\n        self.cm.add(b)                       # streaming update\n        head_sel=torch.zeros(edge_index.size(1),dtype=torch.bool,device=x.device)\n        # template sharing – one mask reused across heads\n        topk=torch.topk(self.score[b],self.k,sorted=False).indices\n        head_sel[topk]=True\n        p=self.k/(self.cm.query(b[topk])+1e-6)\n        weight=head_sel.float()/p.clamp(min=1e-3)\n        # safety check\n        alpha_max=1.0\n        eps=0.05; delta=1e-6\n        safe=(torch.exp(-eps**2*p/(2*alpha_max**2))<delta)\n        if not safe.all():  # fallback\n            return self.conv((x,x),edge_index)\n        return self.conv((x,x),edge_index,edge_weight=weight)\n",
+    "Expected Result": "• Training speed-up vs dense GAT: 1.9× on Reddit, 1.5× on products, 1.3× on papers100M.\n• Inference latency ↓2.6× GPU, ↓3.1× CPU.\n• Memory ↓45-60% training, ↓65% inference.\n• Accuracy drop ≤0.3% (ε=0.05); for ε=0.01 drop ≤0.1%.\n• No violation of soft-max deviation bound in 10^7 monitored batches.\n• Sketch relative error <3%.\n• Adaptive hashing adds +0.3-0.5% accuracy over static LSH and saves another 10% FLOPs.\n",
+    "Expected Conclusion": "SAFE-VALS demonstrates that safety-aware, meta-learned hashing with sketch-based statistics can deliver rigorous error guarantees while accelerating both training and inference of attention-based GNNs on hundred-million-scale graphs using pure Python.  The combination of theoretical worst-case bounds and automatic dense fallback makes the method deployable in risk-sensitive domains; template sharing and continual bucket pruning further cut cost without extra bookkeeping.  SAFE-VALS thus closes the gap between practical scalability and provable reliability for sparse graph attention."
+}
+
+# Experiment Strategy
+────────────────────────────────────────────────────────
+Experiment 1 – End-to-End Scalability & Efficiency Benchmark
+
+Goal:  Show that SAFE-VALS reaches hundred-million-scale while cutting cost.
+Dataset:  ogbn-products (2.4 M), ogbn-papers100M (111 M) and synthetic       PowerLaw-100M (100 M).
+Models:  2-layer GAT (8 h), 3-layer GATv2 (16 h).
+Baselines:  Full GAT, GraphSAINT-GAT, BRSC-GAT, VALS-GAT, GST, NATTEN.
+Hardware:  Single A100-80 GB; CPU inference on 16-core Xeon w/ 512 GB RAM.
+Procedure:
+ 1. Train each model for 30 epochs (papers100M: 10 epochs) with AMP.
+ 2. Record: (i) wall-clock time/epoch, (ii) GPU & host peak memory, (iii)   floating-point Ops via NVProf, (iv) validation accuracy/ROC-AUC.
+ 3. After training, run full-graph inference once on GPU and once on CPU,   measure latency and memory.
+ 4. Repeat 5 seeds; report mean ± σ.
+What success looks like:
+ • ≥1.5× faster training on ogbn-products, ≥1.3× on papers100M.
+ • ≥2.5× faster GPU inference; ≥3× faster CPU inference.
+ • ≥45 % lower training memory; ≥60 % lower inference memory.
+ • Accuracy within 0.3 % (ε = 0.05) of dense GAT.
+Demonstrates:  raw speed/memory gains at “real-world” scale without accuracy loss; confirms claim that a pure-Python pipeline can run on a single A100.
+
+────────────────────────────────────────────────────────
+Experiment 2 – Safety Guarantee & Automatic Fallback Stress Test
+
+Goal:  Empirically validate the Bennett-tail bound and show that SAFE-VALS never violates the user-specified ε, δ while other sparsifiers do.
+Dataset:  Reddit (231 k) for rapid iteration + ogbn-products for realism.
+Setup:
+ • Fix ε ∈ {0.01, 0.05}, δ = 10⁻⁶.
+ • Insert an adversarial “burst” every 100 mini-batches: pick 1 % of nodes,   add Gaussian noise (σ = 2× feature std) and force them into one bucket to   maximise soft-max variance.
+ • For each forward pass record:
+     – max |ã̂ − ã| over all edges,  
+     – whether fallback to dense attention was triggered,  
+     – runtime overhead of safety check.
+Compare to: VALS-GAT (expectation-only guarantee) and GST.
+Success criteria:
+ • SAFE-VALS: 0 violations in ≥10⁷ total attention scores; fallback rate ≤3 %; extra time ≤4 %.
+ • Baselines: observe ≥10³ violations for ε = 0.05.
+Demonstrates: worst-case-bounded behaviour and graceful degradation exactly when the bound would be broken—a key requirement for safety-critical use.
+
+────────────────────────────────────────────────────────
+Experiment 3 – Adaptivity to Embedding Drift via Meta-Learned Hashing
+
+Goal:  Show that the meta-learned hash h_θ tracks feature drift better than fixed LSH, yielding higher accuracy and lower FLOPs over long training horizons.
+Dataset:  Temporal Reddit-Months (posts grouped by month, 12 batches).  After each month, node features are updated with new text embeddings; edges may also change (simulate social network drift).
+Conditions:
+ 1. SAFE-VALS (full) – adaptive h_θ + periodic PQ distillation.
+ 2. SAFE-VALS-static – h_θ frozen after epoch 1 (mimics classic LSH).
+ 3. VALS-GAT – original cosine LSH.
+Metrics per month:
+ • Test ROC-AUC.
+ • Average bucket purity:  fraction of top-K ground-truth high-attention   neighbours that fall in the elected bucket.
+ • Training FLOPs.
+Procedure:
+ Train for 5 epochs on month t, then roll features/edges to month t+1 and continue (continual learning).  Run 3 seeds.
+Success indicators:
+ • Adaptive SAFE-VALS sustains ROC-AUC drop ≤0.5 % across months; static   LSH degrades by ≥2 % by month 12.
+ • Bucket purity for adaptive version stays ≥85 %, static falls to <60 %.
+ • Despite extra hash MLP, FLOPs are ≤10 % higher than static early on and   ≥15 % lower after month 4 due to better sparsity.
+Demonstrates: ability to follow embedding drift and reclaim compute later, directly addressing Open Problem 1 (non-adaptive sparsifiers).
+
+────────────────────────────────────────────────────────
+Together these three experiments attack the method’s purported strengths from orthogonal angles—scalability, safety, and adaptivity—yielding a comprehensive validation of SAFE-VALS.
+
+---
+
+
+# Reference Information from Previous Iteration
+
+Output:
+{
+    "experiment_details": "──────────────────────────────────────────────\nExperiment 1 – End-to-End Scalability & Efficiency Benchmark\n──────────────────────────────────────────────\n1. Models\n   • SAFE-VALS-GAT-2L-8H (ours)\n   • SAFE-VALS-GATv2-3L-16H (ours)\n   • Baselines:  Full-GAT, GraphSAINT-GAT, BRSC-GAT, original VALS-GAT, GST, fused-kernel NATTEN (GATv2).\n   • All baselines keep identical macro architectures (layer #, hidden size 8 × heads) so differences stem solely from sparsification.\n\n2. Datasets\n   • ogbn-products (2.4 M nodes, official split)\n   • ogbn-papers100M (111 M nodes, official split)\n   • PowerLaw-100M (100 M nodes, γ=2.5, average degree 40) – generated once with the SNAP generator, persisted to disk (compressed CSR, 66 GB).  If file not found the runner terminates with IOError in accordance with NO-FALLBACK.\n\n3. Pre-processing\n   • Feature normalisation: x ← (x−µ)/σ per dimension (µ,σ from train set).\n   • Add self-loops for dense GAT and GraphSAINT. SAFE-VALS uses the same edge_index as baselines to avoid confounding.\n   • Mixed precision (torch.cuda.amp) throughout.\n\n4. Data split\n   • ogbn: use provided train/valid/test boolean masks.\n   • PowerLaw-100M: random node‐level split 60/20/20 with np.random.seed=0.\n\n5. Training protocol\n   • Epoch budget: 30 for products & PowerLaw, 10 for papers100M.\n   • Optimiser: AdamW, lr=2e-3, weight-decay=5e-4, linear warm-up 5 % epochs.\n   • Batch size: full-batch for products; Cluster-GCN with 1 M nodes/cluster for papers100M & PowerLaw so every variant sees identical mini-batches.\n   • Early-stop: monitor val Accuracy, patience=10 (products) / 5 (others).  Still train full epoch budget so wall-clock numbers are comparable; early stop only affects which checkpoint is evaluated.\n   • Seeds: {1,12,123,1234,12345}.  Mean±std reported; primary metric = best-val-selected model’s test Accuracy.\n\n6. Evaluation metrics\n   • Primary: Top-1 Accuracy (products, PowerLaw), ROC-AUC (papers100M multiclass averaged to macro).\n   • Secondary:   – Wall-clock time/epoch (CUDA events)  – Peak GPU & host RAM (pynvml + psutil)  – Training FLOPs (Nsight Compute)  – Full-graph inference latency GPU & CPU  – Soft-max worst-case deviation (SAFE-VALS only).\n\n7. Comparisons / implementation notes\n   • BRSC-GAT/NATTEN use vendor kernels compiled with ‑sm_80.\n   • GraphSAINT is run in \"node\" sampling mode, budget=2 M sub-graph nodes to match memory.\n   • GST & VALS-GAT reuse the open-source configs; hidden size & heads aligned.\n   • All variants timed in the same docker image (CUDA 12.1, PyTorch 2.1, PyG 2.4).\n\n8. Hyper-parameter analysis\n   • Sweep SAFE-VALS k∈{4,8,16}, ε∈{0.01,0.05}, buckets∈{2¹²,2¹³} on ogbn-products; report Pareto frontier FLOPs vs Accuracy.\n\n9. Robustness checks\n   • Feature noise: add N(0,0.1σ) to 10 % of node features at inference; measure ΔAccuracy.\n   • Sub-graph OOD: delete 5 % high-degree hubs and re-run inference.\n\n10. Resource profiling\n   • FLOPs via Nsight, counting both matmul & hashing MLP (integer ops excluded).\n   • Wall-clock cost extrapolated to one training run × full epoch budget.\n\n11. Example snippet (products, SAFE-VALS-GAT)\n   ```python\n   model = SAFEVALS_GAT(8,8,heads=8,k=8,buckets=2**12,eps=0.05)\n   opt   = torch.optim.AdamW(model.parameters(),2e-3,weight_decay=5e-4)\n   scaler= torch.cuda.amp.GradScaler()\n   for epoch in range(30):\n       with torch.cuda.amp.autocast():\n           out=model(data.x,data.edge_index)\n           loss=F.cross_entropy(out[data.train_mask],data.y[data.train_mask])\n       opt.zero_grad(); scaler.scale(loss).backward(); scaler.step(opt); scaler.update()\n   ```\n\nSuccess thresholds listed in Experiment Strategy will be asserted in the harness; run aborts with AssertionError if not met.\n\n──────────────────────────────────────────────\nExperiment 2 – Safety Guarantee & Automatic Fallback Stress-Test\n──────────────────────────────────────────────\n1. Models\n   • SAFE-VALS-GAT-2L-8H (ε∈{0.01,0.05})\n   • VALS-GAT (expectation-guarantee only)\n   • GST (sampling-based)\n\n2. Datasets\n   • Reddit (official split, 231 k nodes)\n   • ogbn-products (for confirmatory run)\n\n3. Pre-processing\n   • Same normalisation as Exp-1.  Additional adversarial burst injection uses a on-the-fly DataLoader wrapper.\n\n4. Data split / seeds\n   • Official splits; 3 seeds {2,22,222}.  Early-stop on val.\n\n5. Experimental procedure\n   a) Training: standard SAFE-VALS config until convergence (patience=15).\n   b) During evaluation phase, the custom loader performs every 100th mini-batch “burst”:\n      – sample 1 % nodes U ~ Uniform(train ∪ val ∪ test)\n      – x[U] ← x[U] + N(0, (2σ)² I)\n      – override hash so all edges of U collide into bucket 0.\n   c) For each forward pass compute\n      max_err = |ã̂−ã|_max; record bit if max_err>ε.\n      time_overhead = (t_safevals – t_valsgat)/t_valsgat.\n\n6. Metrics & success criteria\n   • Violations count, fallback ratio, overhead %, Memory Δ.\n   • Must satisfy targets in strategy (0 violations for SAFE-VALS, etc.).\n\n7. Robustness dimensions covered\n   • Noise injection, adversarial bucket collision, run-time distribution shift.\n\n8. Hyper-parameter sweeps\n   • ε sweep {0.005,0.01,0.02,0.05}; δ fixed 1e-6.  Plot violation rate vs fallback%.  Helps choose default ε=0.05 from knee of curve.\n\n9. Example code excerpt (burst wrapper)\n   ```python\n   class BurstLoader(torch.utils.data.DataLoader):\n       def __iter__(self):\n           for i,batch in enumerate(super().__iter__()):\n               if i%100==0:\n                   u = torch.randperm(batch.x.size(0))[:int(0.01*batch.x.size(0))]\n                   batch.x[u] += torch.randn_like(batch.x[u])*2*batch.x.std(0)\n                   # force bucket 0\n                   batch.force_bucket = u\n               yield batch\n   ```\n\n──────────────────────────────────────────────\nExperiment 3 – Adaptivity to Embedding Drift via Meta-Learned Hashing\n──────────────────────────────────────────────\n1. Dataset:  Temporal Reddit-Months\n   • We crawl twelve monthly Reddit dumps (Jan-Dec 2023) using Pushshift API.\n   • Node = author, feature = RoBERTa-base CLS embedding of post corpus for that month (768-d) + degree.\n   • Edges: reply graph within same month.\n   • Graph sizes vary 85 k – 120 k nodes.\n   • For compliance with NO-FALLBACK the dataset builder checks local cache; if missing, raises RuntimeError with download instructions.\n\n2. Split strategy\n   • Inductive: for month t, train on months ≤t−1, validate on month t−1, test on month t (rolling window).  Ensures drift scenario.\n\n3. Models / conditions\n   1) SAFE-VALS-adaptive  (re-train h_θ ; PQ distill every Δ=2 epochs)\n   2) SAFE-VALS-static    (freeze h_θ after epoch 1)\n   3) VALS-GAT (cosine LSH)\n\n4. Hyper-params\n   • k=8, buckets=2¹², ε=0.05.\n   • Optimiser: AdamW lr=1e-3 fixed.\n   • Δepochs for distillation = 2, PQ codebooks 4×8 bits.\n   • Seeds: {3,33,333}.\n\n5. Metrics (per month & averaged)\n   • ROC-AUC (primary)\n   • Bucket purity = |{(u,v) top-K true high-attn : hash(u,v)=selected bucket}| / K.\n   • Training FLOPs.\n   • Hash entropy H(hash) to quantify adaptivity.\n\n6. Robustness & Ablations\n   • Additional ablation: disable continual bucket pruning.\n   • Evaluate month t model directly on month t+3 to measure long-horizon drift robustness.\n\n7. FLOPs / memory\n   • FLOPs measured with torch.profiler on a representative mini-batch and scaled by #iterations.\n   • Memory snapshot each epoch via torch.cuda.max_memory_allocated().\n\n8. Example rollout pseudo-code\n   ```python\n   for m in range(12):        # months\n       train_loader = MonthDataset(m-1).loader()\n       model.begin_month()    # resets prune counters\n       for epoch in range(5):\n           train_one_epoch(...)\n           if epoch%2==0 and adaptive:\n               model.distill_hash_PQ()\n       evaluate(month=m)\n   ```\n\n──────────────────────────────────────────────\nCommon utility modules\n──────────────────────────────────────────────\n• Timing & memory  – utils/profiler.py exports context manager profile_block(name) producing CSV rows.\n• FLOPs  – utils/flop.py wraps torch.profiler to isolate matmul + einsum events.\n• Assertion harness – exp_runner.py loads yaml spec, launches run, and at end calls assert metrics≥target or raises.\n\n──────────────────────────────────────────────\nDeliverables\n──────────────────────────────────────────────\n1. Reproducible conda environment (environment.yml,  CUDA 12.1, PyTorch 2.1, PyG 2.4)\n2. run_exp.py --exp 1|2|3  --seed N  outputs metrics.json\n3. Analysis notebooks plotting speed-accuracy trade-offs and drift curves.\n",
+    "expected_models": [
+        "SAFE-VALS-GAT",
+        "SAFE-VALS-GATv2",
+        "Full GAT",
+        "GraphSAINT-GAT",
+        "BRSC-GAT",
+        "VALS-GAT",
+        "GST",
+        "NATTEN"
+    ],
+    "expected_datasets": [
+        "ogbn-products",
+        "ogbn-papers100M",
+        "PowerLaw-100M",
+        "Reddit",
+        "Temporal Reddit-Months"
+    ]
+}
