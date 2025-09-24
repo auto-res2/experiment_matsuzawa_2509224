@@ -1,0 +1,129 @@
+
+Input:
+# Instructions:
+You determine whether the Python script has succeeded or failed based on the given information.
+Output True if the script SUCCEEDED, False if it FAILED.
+Follow the rules below:
+
+# Rules:
+- Output False if "Error Data" contains any error messages or exceptions.
+- Output False if both "Error Data" and "Output Data" are empty.
+- Output False if "Output Data" does not contain clear experimental results such as:
+  - Quantitative results or measurements
+  - Numerical comparisons or improvements
+  - Completion messages indicating successful execution
+  - Statistical analysis or evaluation results
+- Output True ONLY if "Output Data" contains clear evidence of successful experimental execution with meaningful results.
+
+# Error Data:
+
+# Output Data:
+Exp-1  Breadth-of-Coverage   ===============================================
+Results (first 3 rows):
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 175.89655286624168
+  }
+]
+...
+Figure saved         : exp1_accuracy.pdf
+
+Exp-1  Breadth-of-Coverage   ===============================================
+Results (first 3 rows):
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 184.94458129420107
+  }
+]
+...
+Figure saved         : exp1_accuracy.pdf
+
+Exp-1  Breadth-of-Coverage   ===============================================
+Results (first 3 rows):
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 184.57222206909793
+  }
+]
+...
+Figure saved         : exp1_accuracy.pdf
+
+Exp-2  Privacy-preserving meta-training   ==================================
+{
+  "vit_small_patch16_224.augreg_in21k_ft_in1k_seed17": {
+    "meta_steps": 1,
+    "wall_clock_s": 1.434443473815918
+  }
+}
+Meta-training summary written to: .research/iteration1/smoke/meta_train_results.json
+
+Exp-1  Breadth-of-Coverage   ===============================================
+Results (first 3 rows):
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 188.41644880650907
+  }
+]
+...
+Figure saved         : exp1_accuracy.pdf
+
+Exp-2  Privacy-preserving meta-training   ==================================
+{
+  "vit_small_patch16_224.augreg_in21k_ft_in1k_seed17": {
+    "meta_steps": 1,
+    "wall_clock_s": 0.5610127449035645
+  }
+}
+Meta-training summary written to: .research/iteration1/smoke/meta_train_results.json
+
+Exp-1  Breadth-of-Coverage   ===============================================
+Results (first 3 rows):
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 184.70973358753457
+  }
+]
+...
+Figure saved         : exp1_accuracy.pdf
+
+Exp-2  Privacy-preserving meta-training   ==================================
+{
+  "vit_small_patch16_224.augreg_in21k_ft_in1k_seed17": {
+    "meta_steps": 1,
+    "wall_clock_s": 0.5534868240356445
+  }
+}
+Meta-training summary written to: .research/iteration1/smoke/meta_train_results.json
+
+Exp-3  Adaptive streaming & χ² guard   ==================================
+Results: {
+  "frames": 10,
+  "mean_latency_ms": 196.68619632720947,
+  "guard_rollbacks": 0,
+  "stream_fps": 2.306750374627277
+}
+Figure saved: exp3_stream.pdf
+Output:
+{
+    "is_experiment_successful": true
+}
