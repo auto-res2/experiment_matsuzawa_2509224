@@ -1,0 +1,209 @@
+
+Input:
+The Python standard output and errors are provided below.
+Extract all information related to the experimental results from the standard output, and extract the Python error details from the errors, outputting them exactly as they are without any modifications.
+Do not extract unnecessary execution logs or information about Python package installations.
+
+# Standard Output
+=== [PHASE 1/2] Smoke test start Wed Sep 24 12:23:46 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+=== [PHASE 1/2] Smoke test start Wed Sep 24 12:29:19 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+=== [PHASE 1/2] Smoke test start Wed Sep 24 12:30:20 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+=== [PHASE 1/2] Smoke test start Wed Sep 24 12:31:14 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+=== [PHASE 1/2] Smoke test start Wed Sep 24 12:35:43 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+=== [PHASE 1/2] Smoke test start Wed Sep 24 12:37:15 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+=== [PHASE 1/2] Smoke test start Wed Sep 24 12:38:35 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+Results (first 3 rows):
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 175.89655286624168
+  }
+]
+...
+Figure saved         : exp1_accuracy.pdf
+
+Exp-2  Privacy-preserving meta-training   ==================================
+=== [PHASE 1/2] Smoke test start Wed Sep 24 12:44:25 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+Results (first 3 rows):
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 184.94458129420107
+  }
+]
+...
+Figure saved         : exp1_accuracy.pdf
+
+Exp-2  Privacy-preserving meta-training   ==================================
+=== [PHASE 1/2] Smoke test start Wed Sep 24 12:49:56 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+Results (first 3 rows):
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 184.57222206909793
+  }
+]
+...
+Figure saved         : exp1_accuracy.pdf
+
+Exp-2  Privacy-preserving meta-training   ==================================
+{
+  "vit_small_patch16_224.augreg_in21k_ft_in1k_seed17": {
+    "meta_steps": 1,
+    "wall_clock_s": 1.434443473815918
+  }
+}
+Meta-training summary written to: .research/iteration1/smoke/meta_train_results.json
+
+Exp-3  Adaptive streaming & χ² guard   ==================================
+=== [PHASE 1/2] Smoke test start Wed Sep 24 12:56:34 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+Results (first 3 rows):
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 188.41644880650907
+  }
+]
+...
+Figure saved         : exp1_accuracy.pdf
+
+Exp-2  Privacy-preserving meta-training   ==================================
+{
+  "vit_small_patch16_224.augreg_in21k_ft_in1k_seed17": {
+    "meta_steps": 1,
+    "wall_clock_s": 0.5610127449035645
+  }
+}
+Meta-training summary written to: .research/iteration1/smoke/meta_train_results.json
+
+Exp-3  Adaptive streaming & χ² guard   ==================================
+=== [PHASE 1/2] Smoke test start Wed Sep 24 01:01:40 PM UTC 2025 ===
+================================================================================
+SAUNet – unified forward-only adaptation experiments
+Configuration : config/smoke_test.yaml
+Device        : cuda
+================================================================================
+
+Exp-1  Breadth-of-Coverage   ===============================================
+Results (first 3 rows):
+[
+  {
+    "arch": "convnext_tiny.fb_in22k_ft_in1k",
+    "corr": "gaussian_noise",
+    "sev": 1,
+    "top1": 0.75828,
+    "fps": 184.70973358753457
+  }
+]
+...
+Figure saved         : exp1_accuracy.pdf
+
+Exp-2  Privacy-preserving meta-training   ==================================
+{
+  "vit_small_patch16_224.augreg_in21k_ft_in1k_seed17": {
+    "meta_steps": 1,
+    "wall_clock_s": 0.5534868240356445
+  }
+}
+Meta-training summary written to: .research/iteration1/smoke/meta_train_results.json
+
+Exp-3  Adaptive streaming & χ² guard   ==================================
+Results: {
+  "frames": 10,
+  "mean_latency_ms": 196.68619632720947,
+  "guard_rollbacks": 0,
+  "stream_fps": 2.306750374627277
+}
+Figure saved: exp3_stream.pdf
+=== [PHASE 1/2] Smoke test PASSED Wed Sep 24 01:06:28 PM UTC 2025 ===
+
+
+# Error
+
+Output:
+{
+    "extracted_output": "Exp-1  Breadth-of-Coverage   ===============================================\nResults (first 3 rows):\n[\n  {\n    \"arch\": \"convnext_tiny.fb_in22k_ft_in1k\",\n    \"corr\": \"gaussian_noise\",\n    \"sev\": 1,\n    \"top1\": 0.75828,\n    \"fps\": 175.89655286624168\n  }\n]\n...\nFigure saved         : exp1_accuracy.pdf\n\nExp-1  Breadth-of-Coverage   ===============================================\nResults (first 3 rows):\n[\n  {\n    \"arch\": \"convnext_tiny.fb_in22k_ft_in1k\",\n    \"corr\": \"gaussian_noise\",\n    \"sev\": 1,\n    \"top1\": 0.75828,\n    \"fps\": 184.94458129420107\n  }\n]\n...\nFigure saved         : exp1_accuracy.pdf\n\nExp-1  Breadth-of-Coverage   ===============================================\nResults (first 3 rows):\n[\n  {\n    \"arch\": \"convnext_tiny.fb_in22k_ft_in1k\",\n    \"corr\": \"gaussian_noise\",\n    \"sev\": 1,\n    \"top1\": 0.75828,\n    \"fps\": 184.57222206909793\n  }\n]\n...\nFigure saved         : exp1_accuracy.pdf\n\nExp-2  Privacy-preserving meta-training   ==================================\n{\n  \"vit_small_patch16_224.augreg_in21k_ft_in1k_seed17\": {\n    \"meta_steps\": 1,\n    \"wall_clock_s\": 1.434443473815918\n  }\n}\nMeta-training summary written to: .research/iteration1/smoke/meta_train_results.json\n\nExp-1  Breadth-of-Coverage   ===============================================\nResults (first 3 rows):\n[\n  {\n    \"arch\": \"convnext_tiny.fb_in22k_ft_in1k\",\n    \"corr\": \"gaussian_noise\",\n    \"sev\": 1,\n    \"top1\": 0.75828,\n    \"fps\": 188.41644880650907\n  }\n]\n...\nFigure saved         : exp1_accuracy.pdf\n\nExp-2  Privacy-preserving meta-training   ==================================\n{\n  \"vit_small_patch16_224.augreg_in21k_ft_in1k_seed17\": {\n    \"meta_steps\": 1,\n    \"wall_clock_s\": 0.5610127449035645\n  }\n}\nMeta-training summary written to: .research/iteration1/smoke/meta_train_results.json\n\nExp-1  Breadth-of-Coverage   ===============================================\nResults (first 3 rows):\n[\n  {\n    \"arch\": \"convnext_tiny.fb_in22k_ft_in1k\",\n    \"corr\": \"gaussian_noise\",\n    \"sev\": 1,\n    \"top1\": 0.75828,\n    \"fps\": 184.70973358753457\n  }\n]\n...\nFigure saved         : exp1_accuracy.pdf\n\nExp-2  Privacy-preserving meta-training   ==================================\n{\n  \"vit_small_patch16_224.augreg_in21k_ft_in1k_seed17\": {\n    \"meta_steps\": 1,\n    \"wall_clock_s\": 0.5534868240356445\n  }\n}\nMeta-training summary written to: .research/iteration1/smoke/meta_train_results.json\n\nExp-3  Adaptive streaming & χ² guard   ==================================\nResults: {\n  \"frames\": 10,\n  \"mean_latency_ms\": 196.68619632720947,\n  \"guard_rollbacks\": 0,\n  \"stream_fps\": 2.306750374627277\n}\nFigure saved: exp3_stream.pdf",
+    "extracted_error": ""
+}
