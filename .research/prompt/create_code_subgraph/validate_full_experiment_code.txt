@@ -1,0 +1,561 @@
+
+Input:
+You are an AI code reviewer specializing in machine learning experiment validation.
+
+Analyze the provided experiment code and determine if it implements a production-ready experiment for the Current Research Method using relevant External Resources (not synthetic/placeholder data).
+
+# Instructions
+
+## Validation Criteria
+Check if the generated code meets ALL of the following requirements:
+
+1. Real Data Usage: Uses actual datasets (from External Resources when relevant), not synthetic/dummy/placeholder data
+2. Dual Configuration System:
+   - `smoke_test_yaml`: Quick validation configuration with reduced resources (minimal epochs, smaller datasets)
+   - `full_experiment_yaml`: Complete production configuration matching ALL experimental design specifications
+3. Production-Ready Full Experiment: The `--full-experiment` mode must implement the complete experimental design with:
+   - All specified datasets from External Resources
+   - Correct parameter ranges and layer counts as described in experimental details
+   - Full training epochs and comprehensive evaluation metrics
+4. Complete Implementation: Contains full training loops, evaluation metrics, and result saving with no omitted components
+5. Command Line Interface: Properly supports both `--smoke-test` and `--full-experiment` flags with appropriate configuration loading
+6. No Placeholders: Contains no placeholder comments, TODO items, approximations, or incomplete implementations
+
+## Output Format
+Respond with a JSON object containing:
+- `is_full_experiment_ready`: boolean - true if ALL criteria are met, false otherwise
+- `full_experiment_issue`: string - specific issues found if any criteria are not met, focusing on production-readiness of the `--full-experiment` mode
+
+# Current Research Method
+{
+    "Open Problems": "1. Forward-only TTA is still limited to modulating *norm* layers; modern architectures include many scale/shift style parameters outside normalisation (e.g. ConvNeXt “layer-scale”, ViT QKV scaling, residual re-weighting). 2. Meta-training the adaptor on *source* data undermines privacy regulations and hinders drop-in use for proprietary or unavailable datasets. 3. There is no adaptive mechanism to budget compute on-the-fly: edge devices may tolerate an update every N frames instead of every frame. 4. Existing collapse detectors rely on entropy heuristics that mis-fire when label marginals are highly skewed (safety-critical).",
+    "Methods": "We propose SAUNet (Self-Adaptive Universal Normaliser & scale adaptor) – a two–stage, back-prop-free framework that: A) generalises the hyper-network idea of UniTTA to *all affine scale and bias parameters*, not just those inside normalisers, and B) learns these updates *without access to source data* via synthetic self-supervision. 1. Unified parameter view We represent any affine parameter pair (w,b) that precedes a non-linearity as a 2-vector per channel; this covers BN/GN/LN γ,β, ConvNeXt layer-scale, ViT MSA qkv scale, and NF-Net per-channel gains. 2. Contrastive synthetic meta-training Instead of replaying labelled source batches, we drive the backbone with ImageNet-style frequency-matched Gaussian noise and RandAugment distortions while freezing its weights.  The hyper-network h_θ is trained to decrease prediction entropy after a *single* forward correction, supervised only by the backbone’s own softmax – no labels or source images needed. 3. Low-rank hyper-network h_θ = P⊤σ(T·s) where s∈ℝ⁴ stacks per-channel mean,var, skew,kurtosis of *standardised* activations; T is a 4×r tensorised transformer with r≪C, giving O(Cr) cost; P is a learned 2×r projection producing Δw,Δb.  Weight sharing makes θ <0.1 % of backbone. 4. Anytime compute knob At run-time we approximate σ(T·s) with the first K terms of its Householder decomposition; K is set dynamically from a latency budget broadcast by the OS, yielding graceful accuracy/latency trade-off. 5. Robust collapse guard We derive a χ² bound on the divergence between pre- and post-adapt logits; if the bound exceeds τ the update is rolled back and a larger K is attempted, guaranteeing ≤ε risk of accuracy loss under label-shift. 6. Memory-free EMA Instead of ring buffers, we maintain a 2-tap Welford estimator on Δw magnitude; this costs 16 bytes per layer and stabilises recurring streams. 7. INT8 micro-kernels All h_θ ops are quantised and share the GEMM engine of the backbone; extra energy ≈1.5·C MACs.",
+    "Experimental Setup": "Datasets ImageNet-C (sev 1-5), Tiny-ImageNet-C, ImageNet-V2, ImageNet-A, ImageNet-VID-C (bs=1), DomainNet (Real→Clipart/Sketch), Ego4D (video, bs=1, natural shift). Architectures ConvNeXt-Tiny (layer-scale), ViT-Small (LN+QKV scale), NF-ResNet-50 (no norm), ResNet-50-BN (classic). Baselines Source, BN-stat, TTN, UnMix-TNS, UniTTA-0G, Tent(1-step), EATA, CoTTA. Metrics Top-1 error, relative speed C(g), energy/img on Jetson Orin Nano, parameter & SRAM overhead, false-positive collapse-guard rate. Ablations (i) remove scale-only branches, (ii) vary synthetic meta data, (iii) K vs latency, (iv) disable χ² guard. Privacy test simulate deployment when no source images are retained.",
+    "Experimental Code": "import torch,torch.nn as nn,torch.nn.functional as F\nclass SAULayer(nn.Module):\n    \"\"\"Drop-in for any affine (w,b).\"\"\"\n    def __init__(self,C,r=8):\n        super().__init__(); self.C=C; self.r=r\n        self.T=nn.Parameter(torch.randn(4,r))\n        self.P=nn.Parameter(torch.zeros(r,2))\n        self.register_buffer('w0',torch.zeros(C));self.register_buffer('b0',torch.zeros(C))\n    @torch.no_grad()\n    def forward(self,x):                  # x: B,C,*\n        z=(x.flatten(2)-x.mean((2))).div(x.std((2))+1e-5) # standardise per sample\n        m=torch.stack([z.mean(-1),z.var(-1),z.pow(3).mean(-1),z.pow(4).mean(-1)]) #4,B,C\n        s=m.mean(1)                       # B,C, four stats\n        y=(s@self.T).tanh() @ self.P      # B,C,2 -> Δw,Δb\n        dw,db=y.unbind(-1)\n        self.w0.add_(dw.mean(0)); self.b0.add_(db.mean(0))  # Welford style EMA\n        return (self.w0[None,:,None,None]+1)*x + self.b0[None,:,None,None]",
+    "Expected Result": "• ConvNeXt-T on ImageNet-C: Source 47.5 % err → SAUNet 37.8 % (Tent N/A); speed C(g)=1.02. • ViT-S: 46.1 % → 38.4 %; C(g)=1.05. • NF-ResNet-50: 63.2 % → 51.0 %; C(g)=1.01. • χ² guard yields <0.3 % accuracy drop yet prevents 98 % of collapses in recurring 20-cycle stream; false-positive rate 0.4 %. • Energy per image +3 % vs Source, −60 % vs Tent. • Privacy test: replacing source data with synthetic noise degrades SAUNet by only 0.7 pp.",
+    "Expected Conclusion": "SAUNet extends forward-only TTA beyond normalisation, eliminates source-data dependency via synthetic self-supervision, and introduces provable collapse safeguards and dynamic compute scaling – achieving state-of-the-art robustness at essentially raw inference speed across BN, LN, layer-scale and normaliser-free networks.  This unlocks privacy-preserving, low-energy deployment of adaptive vision on mobile and safety-critical edge devices."
+}
+
+# Experimental Design
+
+## Experiment Strategy
+────────────────────────────────
+EXPERIMENT 1 “Breadth-of-Coverage” corruption & domain–shift benchmark
+────────────────────────────────
+Goal
+• Show that SAUNet’s unified affine view really adapts *every* kind of scale/shift parameter, not only those in norm layers, and that it does so at (near-)zero extra latency.
+
+Set-up
+1. Architectures – ConvNeXt-T (layer-scale), ViT-S (LN + QKV scaling), NF-ResNet-50 (no norms), ResNet-50-BN (classic). All loaded with ImageNet-1K frozen weights.
+2. Datasets –
+   a. ImageNet-C (15 corruptions × 5 severities)
+   b. Tiny-ImageNet-C (to test small-scale models)
+   c. ImageNet-V2 & ImageNet-A (natural shift / extreme shift)
+   d. DomainNet Real → (Sketch, Clipart)
+3. Baselines – Source (no TTA), BN-stat, TTN, UnMix-TNS, Tent(1-step), EATA, CoTTA, UniTTA-0G.
+4. Hardware – single NVIDIA A100 80 GB; batch = 64 (except video streams, see Exp 3). Mixed-precision (AMP) for all methods, INT8 kernels for SAUNet.
+5. Metrics – Top-1 error (↓), relative throughput C(g)=FPSSAUNet/FPSSource (↑), memory overhead (MB), MAC overhead (%), per-sample latency (ms).
+
+Procedure
+• For each network, insert SAULayer before every non-linear block (γ,β; layer-scale; qkv scale…).
+• Meta-weights θ are the same across datasets; only run-time adaptation is allowed.
+• Evaluate each corruption/shift in a single forward pass: 1) load batch → 2) adapt → 3) predict. No gradient storage permitted (fair vis-à-vis Tent/EATA which back-prop).
+
+Success Criterion
+SAUNet must (i) beat the best non-back-prop baseline on ≥80 % of corruption severities, (ii) keep C(g)≥0.98 and (iii) add <0.2 % parameters. A win confirms the premise that “forward-only *general* affine adaptation” is both effective and light-weight.
+
+Expected Observation
+ConvNeXt-T ImageNet-C error: 47.5 → 37.8 %; ViT-S: 46.1 → 38.4 %; NF-R50: 63.2 → 51.0 %. Latency Δ <2 %. Hence the method is architecture-agnostic and essentially free.
+
+What it Demonstrates
+• Addresses Open Problem 1 (beyond normalisers).   
+• Matches / surpasses back-prop TTA without the compute hit (Open 3).   
+• Establishes *state-of-the-art raw-speed robustness*.
+
+────────────────────────────────
+EXPERIMENT 2 Privacy-preserving synthetic meta-training study
+────────────────────────────────
+Goal
+• Prove that SAUNet can be meta-trained *without* any access to the proprietary source dataset yet still delivers almost the same robustness, directly tackling Open Problem 2.
+
+Set-up
+1. Choose ViT-S and ConvNeXt-T (high commercial value).  
+2. Two training regimes:
+   A. SAUNet-Noise – contrastive meta-training on frequency-matched Gaussian noise + RandAugment (no real images).
+   B. SAUNet-Source – identical pipeline but with 10 % of ImageNet-1K images (simulating current methods that *do* keep source data).
+3. Baseline requiring source data: UniTTA-0G.
+4. Hold-out evaluation – license-restricted dataset “Ego4D-Objects” (cannot legally be used for training). Also re-test on ImageNet-C.
+5. Privacy leakage test – run a Membership-Inference Attack (MIA) on the two SAUNet variants and on UniTTA-0G.
+
+Metrics
+• Final Top-1 error (↓).  
+• ΔError = errorNoise − errorSource (pp).  
+• MIA-AUC (↓ is safer).  
+• Time/energy to meta-train (hours, kWh).
+
+Procedure
+• Train both variants for the same wall-clock (2 hrs) on the A100 using 256-sample synthetic batches.  
+• Freeze backbone at all times.  
+• After training, discard θ gradients; deploy in forward-only mode.
+
+Success Criterion
+(i) ΔError ≤ 1 pp on both datasets, (ii) SAUNet-Noise has ≤0.55 MIA-AUC (random ≈ 0.5) while UniTTA ≥0.75, (iii) equal or lower energy cost.
+
+Expected Observation
+• Ego4D-Objects Top-1 error: UniTTA 39.2 %, SAUNet-Source 37.6 %, SAUNet-Noise 38.3 % → 0.7 pp gap.  
+• MIA-AUC: SAUNet-Noise 0.53 (no leakage), UniTTA 0.78.  
+• Training energy: SAUNet 1⁄4 of UniTTA due to synthetic data generation being CPU-bound.
+
+What it Demonstrates
+• SAUNet solves privacy & data-retention concerns with almost no performance cost.   
+• Validates the synthetic self-supervision recipe as a viable replacement for real data replay.
+
+────────────────────────────────
+EXPERIMENT 3 Any-time compute knob & χ² safety guard in streaming video
+────────────────────────────────
+Goal
+• Evaluate Open Problems 3 & 4: (a) dynamic adaptation frequency given latency budgets, (b) mathematically-grounded collapse detection.
+
+Set-up
+1. Dataset – ImageNet-VID-C and Ego4D (natural video). Stream frames sequentially (batch = 1) to replicate edge cameras.
+2. Latency budgets broadcast every 500 ms, drawn from {3.3 ms, 6.6 ms, 13 ms}; maps to K={1,2,4} Householder terms in SAUNet.
+3. Compare –
+   • SAUNet (adaptive K + χ² guard)  
+   • SAUNet-fixed-K=4 (no budget awareness)  
+   • Tent(1-step) – recompute each frame  
+   • Source – no adaptation.
+4. Intentionally inject two adversarial periods: (i) frame sequence containing only a single class, (ii) sudden label-space shift (vehicles→animals).
+
+Metrics
+• Stream-level mAP (↑).  
+• Average latency per frame (ms) (↓).  
+• %Frames that violate budget, %Frames rolled back by χ² guard, accuracy drop after rollback (pp), number of collapses (entropy→0) (↓).
+
+Procedure
+• Run each 3× with different random seeds; log timing with nvtx ranges.  
+• Collapse ≜ top-1 entropy <0.01 for ≥20 consecutive frames.
+
+Success Criterion
+(i) Adaptive SAUNet meets 100 % latency budgets, (ii) ≤ε = 0.5 % accuracy loss from guard activations, (iii) zero collapses versus ≥1 for Tent or SAUNet-no-guard.
+
+Expected Observation
+• mAP: Source 65.2, Tent 71.0 (lat 14 ms), SAUNet-fixed 72.4 (lat 13 ms), SAUNet-adaptive 71.9 (lat 7 ms).  
+• χ² guard triggers on the two adversarial windows, rolls back 1.8 % of frames, final accuracy drop 0.2 pp and prevents all collapses; Tent collapses once, SAUNet-no-guard twice.  
+• Budget violation: 0 % (adaptive) vs 24 % (fixed-K).
+
+What it Demonstrates
+• SAUNet can trade accuracy for speed on-the-fly without manual tuning, fulfilling Open Problem 3.  
+• The χ² bound is a robust collapse detector superior to entropy heuristics, solving Open Problem 4 in safety-critical streams.
+
+────────────────────────────────
+Combined Take-away
+The three complementary experiments—wide-spectrum corruption adaptation, privacy-sensitive meta-training, and real-time video with compute & safety constraints—jointly showcase SAUNet’s effectiveness across *coverage, compliance, and deployability* dimensions, confirming every claimed advantage over prior forward-only TTA methods.
+
+## Experiment Details
+────────────────────────────────────────────
+COMMON SETTINGS (apply to all experiments)
+────────────────────────────────────────────
+Execution HW  : single NVIDIA A100-80GB, CUDA 12.2, PyTorch 2.1, AMP (bfloat16) enabled; cudnn-benchmark on.
+Backbones     :
+• ConvNeXt-Tiny (layer-scale, 28 M params, patch=4, 224×224, torchvision==0.17)
+• ViT-Small/16 (LN + QKV scale, 22 M)
+• NF-ResNet-50 (norm-free, 25.6 M, timm==0.9.2)
+• ResNet-50-BN (classic, 25.5 M)
+SAUNet insert : before every affine pair that precedes a non-linearity. Default low-rank r=8, INT8 weight quantisation. Hyper-network θ <0.1 % of backbone.
+Seeds         : {17, 42, 94}.  Results are reported as mean±std across seeds.
+FL & Time     : FLOPs via fvcore.FlopCountAnalysis; latency & memory via PyTorch profiler; energy via nvidia-smi --query-gpu=power.draw integrated over wall-clock.
+Splits        : Unless stated otherwise we keep the official *validation* sets fully held-out; no training images are touched during TTA.
+Selection rule: “last” – because SAUNet is forward-only. Baselines that back-prop (Tent, EATA, CoTTA) use best-val checkpoint to avoid bias.
+Primary metric hierarchy: (i) Accuracy / mAP, (ii) latency & compute overhead, (iii) memory, (iv) collapse statistics.
+────────────────────────────────────────────
+EXPERIMENT 1 – Breadth-of-Coverage corruption & domain shift
+────────────────────────────────────────────
+Goal   : verify architecture-agnostic, zero-latency adaptation.
+Datasets:
+  a. ImageNet-C v1.1 (15 corruptions×5 severities, 50k images) – resize shorter side 256, centre-crop 224.
+  b. Tiny-ImageNet-C (same corruption suite, 10k images) – resize 64×64.
+  c. ImageNet-V2-matched-frequency (10k) – same pipeline as (a).
+  d. ImageNet-A (7.5k adversarial natural) – pipeline (a).
+  e. DomainNet Real, Clipart, Sketch – use official test partitions, resize 224.
+Pre-processing (all backbones): mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225]; bicubic, keep aspect.
+Data loader     : bs=64, num_workers=8, pin-memory.
+Baselines        : Source, BN-stat (BatchNorm buffer recomputation), TTN, UnMix-TNS, Tent(1-step), EATA, CoTTA, UniTTA-0G.
+Hyper-params grid (only SAUNet): r∈{4,8,16}; Householder depth K=4 (fixed); χ² guard disabled (not needed for static images).  Best r chosen on Tiny-ImageNet-C severity 3.
+Robustness axes : corruption type, severity, architecture.
+Evaluation loop :
+  for corrupt in 15×5:
+      run three seeds → collect Top-1, FPS, ΔMAC, memory.
+Budgeted compute: measure FPS for 5k images warm-up+eval; C(g)=FPSSAUNet/FPSsource.
+Success check   : ≥80 % severity win, C(g)≥0.98, param overhead <0.2 %.
+FLOPs           : counted once per backbone w/ and w/o SAULayers; reported as % increase.
+Example code    : see Supplementary Listing 1 below.
+
+────────────────────────────────────────────
+EXPERIMENT 2 – Privacy-preserving synthetic meta-training
+────────────────────────────────────────────
+Goal   : prove source-free meta-training keeps accuracy & blocks membership leakage.
+Backbones: ConvNeXt-T, ViT-S only.
+Meta-training regimes (2 hrs, 8 GB vRAM):
+ A) SAUNet-Noise → 256 samples of 224×224 Gaussian 1/f noise, RandAugment(N=2,M=9), SGD lr=1e-3, cosine decay.
+ B) SAUNet-Source → same but 10 % ImageNet-1K train images.
+Baselines       : UniTTA-0G (requires full source data).
+Evaluation sets :
+  • Ego4D-Objects val split (≈70 k frames, object classification labels) – resize 224.
+  • ImageNet-C (severity 3 midpoint only, 15 corruptions).
+MIA attack      : Yeom et al. confidence score; 5 k member / 5 k non-member queries; report AUROC.
+Metrics         : Top-1 error (primary), ΔError, MIA-AUC, training energy (kWh) and wall-clock, param & MAC overhead.
+Hyper-param study: vary noise σ∈{0.25,0.5,1.0}, colour jitter p∈{0.0,0.5,1.0}.  Grid 3×3 on 5 % of ImageNet-C to choose default.
+Robustness      : same corruption panel; no gradient adaptation is performed during eval.
+Success         : ΔError≤1 pp, MIA-AUC≤0.55, ≤UniTTA energy.
+Example code    : Supplementary Listing 2.
+
+────────────────────────────────────────────
+EXPERIMENT 3 – Any-time compute knob & χ² guard on streaming video
+────────────────────────────────────────────
+Goal   : satisfy dynamic latency budgets and prevent adaptation collapse.
+Datasets:
+ • ImageNet-VID-C – apply ImageNet-C distortions frame-wise to the official val videos (555 clips, 168 k frames).
+ • Ego4D objects subset (40 videos, 95 k frames) – natural shift.
+Pre-processing : decode ⇒ resize shorter 256 ⇒ centre-crop 224; batch=1 frame to preserve temporal order.
+Latency budgets: External process sends new budget B∈{3.3,6.6,13} ms every 0.5 s via shared-memory int; SAUNet chooses K∈{1,2,4} s.t. measured latency≤B.
+Baselines       : SAUNet-adaptive (K dynamic, χ² guard), SAUNet-fixed-K=4 (static), Tent(1-step), Source.
+Adversarial phases: (i) 300-frame mono-class insertion, (ii) sudden domain swap video.
+Metrics  (primary)   : stream-level mAP@0.5.
+Secondary            : avg latency (ms), %budget violation, %frames rolled-back, accuracy loss after rollback, #collapses, energy/frame.
+Hyper-params analysed: τ (χ² threshold) ∈ {1,3,5}, guard window w∈{10,20,50} frames.  Select τ=3,w=20 on held-out 10 VID-C clips.
+Robustness           : OOD frames, adversarial, latency perturbation (±0.8 ms random jitter).
+Success              : 0 budget violation, ≤0.5 pp loss, no collapse.
+Example code         : Supplementary Listing 3.
+
+────────────────────────────────────────────
+SUPPLEMENTARY LISTING 1 – image experiment skeleton
+────────────────────────────────────────────
+from timm import create_model
+from datasets import load_dataset  # huggingface hub wrappers for ImageNet-C
+import saunet
+model = create_model('convnext_tiny', pretrained=True).eval().cuda().to(memory_format=torch.channels_last)
+model = saunet.inject(model, r=8, int8=True)  # auto-wrap affine layers
+loader = build_corruption_loader('gaussian_noise', severity=3, bs=64)
+with torch.autocast('cuda', dtype=torch.bfloat16):
+    for x,y in loader:
+        preds = model(x.cuda(non_blocking=True))
+        acc.update(preds, y)
+print(acc.compute())
+
+────────────────────────────────────────────
+SUPPLEMENTARY LISTING 2 – synthetic meta-training loop
+────────────────────────────────────────────
+noise = torch.randn(256,3,224,224, device='cuda')
+aug   = RandAugment(N=2, M=9)
+opt   = torch.optim.Adam(saunet.parameters(), lr=1e-3)
+for step in range(25_000):
+    x = aug(noise).detach()  # re-draw each step
+    with torch.no_grad():
+        p0 = backbone(x)
+    p1 = backbone(saunet.forward_correct(x))
+    loss = (entropy(p1) - entropy(p0)).mean()
+    loss.backward(); opt.step(); opt.zero_grad()
+
+────────────────────────────────────────────
+SUPPLEMENTARY LISTING 3 – adaptive streaming loop
+────────────────────────────────────────────
+budget_shm = multiprocessing.shared_memory.ShareableList(name='lat_budget')
+for frame in stream:
+    K = saunet.choose_K(budget_shm[0])
+    with torch.autocast('cuda', torch.bfloat16):
+        logits,pred = saunet.forward(frame.cuda(), K=K, guard=True)
+    log_metrics(logits, pred, timer.elapsed())
+
+All experiments terminate with clear error messages (PyTorch exceptions) if a required dataset is not present in $DATA_ROOT, satisfying the NO-FALLBACK constraint.
+
+
+
+# Generated Experiment Code Files
+{"evaluate_py": "import json\nimport os\nfrom pathlib import Path\nfrom typing import Dict\n\nimport torch\nimport torch.nn.functional as F\nfrom torch.utils.data import DataLoader\n\n__all__ = [\"evaluate\"]\n\ndef _accuracy(logits: torch.Tensor, targets: torch.Tensor, topk: int = 1) -\u003e torch.Tensor:\n    _, pred = logits.topk(topk, 1, True, True)\n    correct = pred.eq(targets.view(-1, 1).expand_as(pred))\n    return correct.float().sum() / targets.size(0)\n\n\ndef evaluate(model: torch.nn.Module, loader: DataLoader, device: torch.device, *, tag: str = \"smoke\") -\u003e Dict[str, float]:\n    model.eval()\n    device = torch.device(device)\n    model.to(device)\n    top1 = 0.0\n    total = 0\n    with torch.no_grad():\n        for x, y in loader:\n            x = x.to(device, non_blocking=True)\n            y = y.to(device, non_blocking=True)\n            logits = model(x)\n            top1 += _accuracy(logits, y).item() * x.size(0)\n            total += x.size(0)\n    acc = top1 / max(total, 1)\n\n    # ------------------------------------------------------------------\n    # Save to .research/iteration1 and also print to stdout for CI checks\n    # ------------------------------------------------------------------\n    results_dir = Path(\".research/iteration1\")\n    results_dir.mkdir(parents=True, exist_ok=True)\n    out_path = results_dir / f\"results_{tag}.json\"\n    with out_path.open(\"w\") as f:\n        json.dump({\"top1_acc\": acc}, f, indent=2)\n    print(out_path.read_text())\n\n    return {\"top1_acc\": acc}", "full_experiment_yaml": "# Full-scale configuration \u2013 expects real datasets under $DATA_ROOT\nr: 8\nbatch_size: 64\ndataset: imagenet_c\nnum_classes: 1000\nepochs: 2\nlr: 0.0003\ndevice: cuda\n", "main_py": "\"\"\"Entry-point with two-phase execution (smoke-test then full experiment).\"\"\"\nfrom __future__ import annotations\n\nimport argparse\nimport json\nfrom pathlib import Path\nfrom typing import Any, Dict\n\nimport yaml\n\nfrom .preprocess import get_dataloader\nfrom .train import inject_saunet_layers, fit\nfrom .evaluate import evaluate\n\n_DEFAULT_CONF_DIR = Path(__file__).resolve().parent.parent.parent / \"config\"\n\n\ndef _load_cfg(path: Path) -\u003e Dict[str, Any]:\n    with path.open() as f:\n        return yaml.safe_load(f)\n\n\ndef _run(cfg: Dict[str, Any], tag: str):\n    # ------------------------------------------------------------------\n    # 1. Build / load backbone \u2013 for smoke-tests we use a trivial ConvNet\n    # ------------------------------------------------------------------\n    import torch.nn as nn\n    import torch\n\n    class _TinyCNN(nn.Module):  # noqa: WPS430\n        def __init__(self, num_classes: int = 10):\n            super().__init__()\n            self.net = nn.Sequential(\n                nn.Conv2d(3, 32, 3, padding=1),\n                nn.ReLU(),\n                nn.AdaptiveAvgPool2d(1),\n                nn.Flatten(),\n                nn.Linear(32, num_classes),\n            )\n\n        def forward(self, x):  # noqa: D401\n            return self.net(x)\n\n    loader, num_classes = get_dataloader(cfg, split=\"train\")\n    model = _TinyCNN(num_classes=num_classes)\n\n    # ------------------------------------------------------------------\n    # 2. Inject SAUNet layers + (optional) quantisation etc.\n    # ------------------------------------------------------------------\n    model = inject_saunet_layers(model, r=cfg.get(\"r\", 8))\n\n    # ------------------------------------------------------------------\n    # 3. Train / fine-tune (synthetic or real depending on cfg)\n    # ------------------------------------------------------------------\n    history = fit(\n        model,\n        loader,\n        epochs=cfg.get(\"epochs\", 1),\n        lr=cfg.get(\"lr\", 1e-3),\n        device=cfg.get(\"device\", \"cuda\" if torch.cuda.is_available() else \"cpu\"),\n    )\n\n    # ------------------------------------------------------------------\n    # 4. Evaluate and persist results\n    # ------------------------------------------------------------------\n    evaluate(model, loader, device=\"cuda\" if torch.cuda.is_available() else \"cpu\", tag=tag)\n\n    # Also stash training history alongside metrics\n    out_hist = Path(\".research/iteration1\") / f\"train_history_{tag}.json\"\n    out_hist.write_text(json.dumps(history, indent=2))\n\n\n# -----------------------------------------------------------------------------\n# CLI\n# -----------------------------------------------------------------------------\n\ndef main():  # noqa: D401\n    parser = argparse.ArgumentParser(description=\"SAUNet experimental runner\")\n    group = parser.add_mutually_exclusive_group(required=False)\n    group.add_argument(\"--smoke-test\", action=\"store_true\", help=\"run quick CI smoke-test only\")\n    group.add_argument(\"--full-experiment\", action=\"store_true\", help=\"run full experiment only\")\n    args = parser.parse_args()\n\n    if not args.smoke_test and not args.full_experiment:\n        # default: two-phase\n        args.smoke_test = True\n        args.full_experiment = True\n\n    if args.smoke_test:\n        cfg = _load_cfg(_DEFAULT_CONF_DIR / \"smoke_test.yaml\")\n        _run(cfg, tag=\"smoke\")\n\n    if args.full_experiment:\n        cfg = _load_cfg(_DEFAULT_CONF_DIR / \"full_experiment.yaml\")\n        _run(cfg, tag=\"full\")\n\n\nif __name__ == \"__main__\":\n    main()", "preprocess_py": "\"\"\"Pre-processing \u0026 data-loading.\nFor CI smoke-tests we rely on a synthetic random dataset so the pipeline can run\nindependently of external data downloads.  For full experiments we expect a\nreal dataset to be mounted at `$DATA_ROOT` and throw a clear error otherwise.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport os\nfrom typing import Tuple\n\nimport torch\nfrom torch.utils.data import DataLoader, Dataset\n\n__all__ = [\"get_dataloader\"]\n\n\nclass _Synthetic(Dataset):  # noqa: WPS110 (internal name)\n    def __init__(self, n: int = 256, num_classes: int = 10, img_size: int = 64):\n        super().__init__()\n        self.x = torch.randn(n, 3, img_size, img_size)\n        self.y = torch.randint(0, num_classes, (n,))\n\n    def __len__(self):\n        return self.x.size(0)\n\n    def __getitem__(self, idx):  # noqa: D401\n        return self.x[idx], self.y[idx]\n\n\n# ----------------------------------------------------------------------------\n# Public API\n# ----------------------------------------------------------------------------\n\ndef get_dataloader(cfg: dict, *, split: str = \"train\") -\u003e Tuple[DataLoader, int]:\n    dataset_name = cfg.get(\"dataset\")\n    if dataset_name == \"synthetic\":\n        ds = _Synthetic(n=cfg.get(\"n\", 256), num_classes=cfg.get(\"num_classes\", 10))\n        return DataLoader(ds, batch_size=cfg.get(\"batch_size\", 32), shuffle=True, num_workers=2, pin_memory=True), cfg.get(\"num_classes\", 10)\n\n    # ---------------- real datasets -----------------\n    data_root = os.getenv(\"DATA_ROOT\", None)\n    if data_root is None:\n        raise FileNotFoundError(\"$DATA_ROOT not set \u2013 cannot locate real datasets\")\n\n    raise NotImplementedError(f\"Dataset {dataset_name} loader is not implemented in this refactor.\")", "pyproject_toml": "[project]\nname = \"saunet-research\"\nversion = \"0.1.0\"\ndescription = \"Refactored SAUNet experimental codebase\"\nreadme = \"README.md\"\nrequires-python = \"\u003e=3.10\"\n\n[tool.setuptools]\npackages = [\"src\"]\n\n[project.dependencies]\n# NOTE: dependencies MUST be an array according to the task description\n\n[tool]\n", "smoke_test_yaml": "# Minimal configuration for CI / unit-tests\nr: 4\nbatch_size: 32\nn: 256\nnum_classes: 10\ndataset: synthetic\nepochs: 1\nlr: 0.001\ndevice: cuda\n", "train_py": "import os\nimport json\nfrom typing import Any, Dict\n\nimport torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\n__all__ = [\n    \"SAULayer\",\n    \"inject_saunet_layers\",\n    \"train_one_epoch\",\n    \"fit\",\n]\n\n\ndef _householder(x: torch.Tensor, depth: int = 4) -\u003e torch.Tensor:\n    \"\"\"Cheap tanh approximation with truncated Householder decomposition.\n    Args:\n        x: (..., r) tensor\n        depth: number of Householder reflections to keep\n    Returns:\n        (..., r) tensor with tanh\u2010like non-linearity\n    \"\"\"\n    # For low depths K=1-4 this costs almost nothing and is numerically stable.\n    y = x  # K=1 identity \u2013 good enough for smoke-tests / default\n    if depth \u003e= 2:\n        y = y - 2 * (torch.sum(y * x, dim=-1, keepdim=True) / torch.sum(x * x, dim=-1, keepdim=True)) * x\n    return y\n\n\nclass SAULayer(nn.Module):\n    \"\"\"Self-Adaptive Universal affine layer.\n    Works as a drop-in replacement for any (*w*, *b*) pair preceding a non-linearity.\n    The implementation follows Listing 1 from the paper (see system prompt).\n    \"\"\"\n\n    def __init__(self, C: int, r: int = 8, ema_alpha: float = 0.1):\n        super().__init__()\n        self.C = C\n        self.r = r\n        self.ema_alpha = ema_alpha\n\n        # Low-rank hyper-network parameters\n        self.T = nn.Parameter(torch.randn(4, r))\n        self.P = nn.Parameter(torch.zeros(r, 2))\n\n        # Memory-free EMA buffers (initialised to zeros)\n        self.register_buffer(\"w0\", torch.zeros(C))\n        self.register_buffer(\"b0\", torch.zeros(C))\n\n    @torch.no_grad()  # forward-only, no back-prop at run-time\n    def forward(self, x: torch.Tensor, *, householder_K: int = 1) -\u003e torch.Tensor:  # noqa: N803\n        # x shape: (B, C, *)\n        orig_dtype = x.dtype\n        x = x.float()\n\n        z = (x.flatten(2) - x.mean(dim=(2), keepdim=True)).div(x.std(dim=(2), keepdim=True) + 1e-5)\n        m = torch.stack(\n            [z.mean(-1), z.var(-1), z.pow(3).mean(-1), z.pow(4).mean(-1)]  # 4\u00d7B\u00d7C statistics\n        )\n        s = m.mean(1)  # B\u00d7C\n        y = _householder(s @ self.T, depth=householder_K) @ self.P  # B\u00d7C\u00d72\n        dw, db = y.unbind(-1)\n\n        # Welford-style EMA (no extra memory)\n        self.w0.mul_(1 - self.ema_alpha).add_(self.ema_alpha * dw.mean(0))\n        self.b0.mul_(1 - self.ema_alpha).add_(self.ema_alpha * db.mean(0))\n\n        out = (1.0 + self.w0.to(x.device))[None, :, None, None] * x + self.b0.to(x.device)[None, :, None, None]\n        return out.to(orig_dtype)\n\n\n# -----------------------------------------------------------------------------\n# Utilities to inject SAULayers automatically into a backbone\n# -----------------------------------------------------------------------------\n\n\naffine_parent_types = (nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm, nn.InstanceNorm2d)\n\naffine_param_modules = (nn.Conv2d, nn.Linear)\n\n\ndef _needs_saulayer(module: nn.Module) -\u003e bool:\n    \"\"\"Heuristic: place SAULayer before any non-linear activation that follows an affine.\"\"\"\n    return isinstance(module, (nn.ReLU, nn.GELU, nn.SiLU, nn.LeakyReLU))\n\n\ndef inject_saunet_layers(model: nn.Module, r: int = 8) -\u003e nn.Module:\n    \"\"\"Recursively walk modules and inject SAULayer where applicable.\"\"\"\n\n    def _inject(mod: nn.Module):  # noqa: WPS430 (nested function)\n        children = list(mod.named_children())\n        for name, child in children:\n            if _needs_saulayer(child):\n                # We look at the previous sibling which should hold the affine params.\n                # Fallback to channel dim = 3 if not found \u2013 prevents crashes on exotic nets.\n                prev_C = 3\n                if len(children) \u003e 0:\n                    idx = [n for n, _ in children].index(name)\n                    if idx \u003e= 1:\n                        prev = children[idx - 1][1]\n                        if isinstance(prev, affine_param_modules):\n                            prev_C = prev.out_channels if hasattr(prev, \"out_channels\") else prev.out_features\n                        elif isinstance(prev, affine_parent_types):\n                            prev_C = prev.num_features\n                saulayer = SAULayer(prev_C, r=r)\n                # Insert SAULayer before the activation\n                setattr(mod, f\"saunet_{name}\", saulayer)\n            _inject(child)\n\n    _inject(model)\n    return model\n\n\n# -----------------------------------------------------------------------------\n# Simple training loop for smoke-tests / small-scale runs\n# -----------------------------------------------------------------------------\n\ndef train_one_epoch(model: nn.Module, loader: torch.utils.data.DataLoader, optim: torch.optim.Optimizer, device: torch.device, *, amp: bool = True) -\u003e float:\n    model.train()\n    total_loss = 0.0\n    scaler = torch.cuda.amp.GradScaler(enabled=amp)\n    for x, y in loader:\n        x = x.to(device, non_blocking=True)\n        y = y.to(device, non_blocking=True)\n        with torch.cuda.amp.autocast(enabled=amp):\n            preds = model(x)\n            loss = F.cross_entropy(preds, y)\n        scaler.scale(loss).backward()\n        scaler.step(optim)\n        scaler.update()\n        optim.zero_grad(set_to_none=True)\n        total_loss += loss.item() * x.size(0)\n    return total_loss / len(loader.dataset)\n\n\ndef fit(model: nn.Module, loader: torch.utils.data.DataLoader, *, epochs: int = 1, lr: float = 1e-3, device: str | torch.device = \"cuda\") -\u003e Dict[str, Any]:\n    device = torch.device(device)\n    model.to(device)\n    optim = torch.optim.AdamW(model.parameters(), lr=lr)\n    history = {}\n    for ep in range(epochs):\n        loss = train_one_epoch(model, loader, optim, device)\n        history[f\"epoch_{ep}\"] = {\"train_loss\": loss}\n    return history"}
+
+# External Resources
+
+**HuggingFace Models:**
+
+- ID: timm/convnext_tiny.fb_in22k_ft_in1k
+
+- Code: from urllib.request import urlopen
+from PIL import Image
+import timm
+
+img = Image.open(urlopen(
+    'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/beignets-task-guide.png'
+))
+
+model = timm.create_model('convnext_tiny.fb_in22k_ft_in1k', pretrained=True)
+model = model.eval()
+
+# get model specific transforms (normalization, resize)
+data_config = timm.data.resolve_model_data_config(model)
+transforms = timm.data.create_transform(**data_config, is_training=False)
+
+output = model(transforms(img).unsqueeze(0))  # unsqueeze single image into batch of 1
+
+top5_probabilities, top5_class_indices = torch.topk(output.softmax(dim=1) * 100, k=5)
+
+
+from urllib.request import urlopen
+from PIL import Image
+import timm
+
+img = Image.open(urlopen(
+    'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/beignets-task-guide.png'
+))
+
+model = timm.create_model(
+    'convnext_tiny.fb_in22k_ft_in1k',
+    pretrained=True,
+    features_only=True,
+)
+model = model.eval()
+
+# get model specific transforms (normalization, resize)
+data_config = timm.data.resolve_model_data_config(model)
+transforms = timm.data.create_transform(**data_config, is_training=False)
+
+output = model(transforms(img).unsqueeze(0))  # unsqueeze single image into batch of 1
+
+for o in output:
+    # print shape of each feature map in output
+    # e.g.:
+    #  torch.Size([1, 96, 56, 56])
+    #  torch.Size([1, 192, 28, 28])
+    #  torch.Size([1, 384, 14, 14])
+    #  torch.Size([1, 768, 7, 7])
+
+    print(o.shape)
+
+
+from urllib.request import urlopen
+from PIL import Image
+import timm
+
+img = Image.open(urlopen(
+    'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/beignets-task-guide.png'
+))
+
+model = timm.create_model(
+    'convnext_tiny.fb_in22k_ft_in1k',
+    pretrained=True,
+    num_classes=0,  # remove classifier nn.Linear
+)
+model = model.eval()
+
+# get model specific transforms (normalization, resize)
+data_config = timm.data.resolve_model_data_config(model)
+transforms = timm.data.create_transform(**data_config, is_training=False)
+
+output = model(transforms(img).unsqueeze(0))  # output is (batch_size, num_features) shaped tensor
+
+# or equivalently (without needing to set num_classes=0)
+
+output = model.forward_features(transforms(img).unsqueeze(0))
+# output is unpooled, a (1, 768, 7, 7) shaped tensor
+
+output = model.forward_head(output, pre_logits=True)
+# output is a (1, num_features) shaped tensor
+
+
+- ID: timm/vit_small_patch16_224.augreg_in21k_ft_in1k
+
+- Code: from urllib.request import urlopen
+from PIL import Image
+import timm
+
+img = Image.open(urlopen(
+    'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/beignets-task-guide.png'
+))
+
+model = timm.create_model('vit_small_patch16_224.augreg_in21k_ft_in1k', pretrained=True)
+model = model.eval()
+
+# get model specific transforms (normalization, resize)
+data_config = timm.data.resolve_model_data_config(model)
+transforms = timm.data.create_transform(**data_config, is_training=False)
+
+output = model(transforms(img).unsqueeze(0))  # unsqueeze single image into batch of 1
+
+top5_probabilities, top5_class_indices = torch.topk(output.softmax(dim=1) * 100, k=5)
+
+from urllib.request import urlopen
+from PIL import Image
+import timm
+
+img = Image.open(urlopen(
+    'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/beignets-task-guide.png'
+))
+
+model = timm.create_model(
+    'vit_small_patch16_224.augreg_in21k_ft_in1k',
+    pretrained=True,
+    num_classes=0,  # remove classifier nn.Linear
+)
+model = model.eval()
+
+# get model specific transforms (normalization, resize)
+data_config = timm.data.resolve_model_data_config(model)
+transforms = timm.data.create_transform(**data_config, is_training=False)
+
+output = model(transforms(img).unsqueeze(0))  # output is (batch_size, num_features) shaped tensor
+
+# or equivalently (without needing to set num_classes=0)
+
+output = model.forward_features(transforms(img).unsqueeze(0))
+# output is unpooled, a (1, 197, 384) shaped tensor
+
+output = model.forward_head(output, pre_logits=True)
+# output is a (1, num_features) shaped tensor
+
+
+- ID: timm/nf_resnet50.ra2_in1k
+
+- Code: from urllib.request import urlopen
+from PIL import Image
+import timm
+
+img = Image.open(urlopen(
+    'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/beignets-task-guide.png'
+))
+
+model = timm.create_model('nf_resnet50.ra2_in1k', pretrained=True)
+model = model.eval()
+
+# get model specific transforms (normalization, resize)
+data_config = timm.data.resolve_model_data_config(model)
+transforms = timm.data.create_transform(**data_config, is_training=False)
+
+output = model(transforms(img).unsqueeze(0))  # unsqueeze single image into batch of 1
+
+top5_probabilities, top5_class_indices = torch.topk(output.softmax(dim=1) * 100, k=5)
+
+from urllib.request import urlopen
+from PIL import Image
+import timm
+
+img = Image.open(urlopen(
+    'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/beignets-task-guide.png'
+))
+
+model = timm.create_model(
+    'nf_resnet50.ra2_in1k',
+    pretrained=True,
+    features_only=True,
+)
+model = model.eval()
+
+# get model specific transforms (normalization, resize)
+data_config = timm.data.resolve_model_data_config(model)
+transforms = timm.data.create_transform(**data_config, is_training=False)
+
+output = model(transforms(img).unsqueeze(0))  # unsqueeze single image into batch of 1
+
+for o in output:
+    # print shape of each feature map in output
+    # e.g.:
+    #  torch.Size([1, 64, 128, 128])
+    #  torch.Size([1, 256, 64, 64])
+    #  torch.Size([1, 512, 32, 32])
+    #  torch.Size([1, 1024, 16, 16])
+    #  torch.Size([1, 2048, 8, 8])
+
+    print(o.shape)
+
+from urllib.request import urlopen
+from PIL import Image
+import timm
+
+img = Image.open(urlopen(
+    'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/beignets-task-guide.png'
+))
+
+model = timm.create_model(
+    'nf_resnet50.ra2_in1k',
+    pretrained=True,
+    num_classes=0,  # remove classifier nn.Linear
+)
+model = model.eval()
+
+# get model specific transforms (normalization, resize)
+data_config = timm.data.resolve_model_data_config(model)
+transforms = timm.data.create_transform(**data_config, is_training=False)
+
+output = model(transforms(img).unsqueeze(0))  # output is (batch_size, num_features) shaped tensor
+
+# or equivalently (without needing to set num_classes=0)
+
+output = model.forward_features(transforms(img).unsqueeze(0))
+# output is unpooled, a (1, 2048, 8, 8) shaped tensor
+
+output = model.forward_head(output, pre_logits=True)
+# output is a (1, num_features) shaped tensor
+
+
+
+**HuggingFace Datasets:**
+
+- ID: benjamin-paine/imagenet-1k-256x256
+
+
+- ID: randall-lab/tiny-imagenet-c
+
+- Code: from datasets import load_dataset
+
+# Load the dataset
+dataset = load_dataset("randall-lab/tiny-imagenet-c", split="test", trust_remote_code=True)
+
+# Access a sample from the dataset
+example = dataset[0]
+image = example["image"]
+label = example["label"]
+
+image.show()  # Display the image
+print(f"Label: {label}")
+
+
+- ID: ang9867/ImageNet-C
+
+
+- ID: randall-lab/tiny-imagenet-c
+
+- Code: from datasets import load_dataset
+
+# Load the dataset  
+dataset = load_dataset("randall-lab/tiny-imagenet-c", split="test", trust_remote_code=True)
+
+# Access a sample from the dataset  
+example = dataset[0]  
+image = example["image"]  
+label = example["label"]  
+
+image.show()  # Display the image  
+print(f"Label: {label}")
+
+
+- ID: djghosh/wds_imagenetv2_test
+
+
+- ID: barkermrl/imagenet-a
+
+
+- ID: Bruece/domainnet-126-by-class-real
+
+
+- ID: Bruece/domainnet-126-by-class-clipart
+
+
+- ID: Bruece/domainnet-126-by-class-sketch
+
+
+
+
+Analyze the code thoroughly and provide your validation result.
+Output:
+{
+    "is_full_experiment_ready": false,
+    "full_experiment_issue": "`--full-experiment` cannot run: the loader in preprocess.py raises NotImplementedError for real datasets, so full_experiment_yaml references \"imagenet_c\" but no implementation; model backbone replaced by TinyCNN toy net; no handling of ConvNeXt/Vit/NF-ResNet, ImageNet-C, DomainNet etc; training/eval loops lack corruption evaluation, throughput/energy metrics, χ² guard, dynamic K; placeholder configs path incorrect. Therefore criteria 1,3,4 not satisfied."
+}
