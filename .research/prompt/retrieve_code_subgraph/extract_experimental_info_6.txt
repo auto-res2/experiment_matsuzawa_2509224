@@ -1,0 +1,2251 @@
+
+Input:
+You are a researcher with expertise in engineering in the field of machine learning.
+
+# Instructions
+- The content described in “Repository Content” corresponds to the GitHub repository of the method described in “Method.”
+- Please extract the following two pieces of information from “Repository Content”:
+    - experimental_code：Extract the implementation sections that are directly related to the method described in “Method.”
+    - experimental_info：Extract and output the experimental settings related to the method described in “Method.”
+
+# Method
+The methodology introduces the 'recurring TTA' setting, which extends practical TTA by simulating environments that not only change but also recur over time (K times) and feature temporally correlated category distributions. A theoretical analysis is conducted on an ϵ-perturbed binary Gaussian Mixture Model Classifier (ϵ-GMMC) to understand model collapse by simulating an increasing false negative rate (ϵt). Based on these insights, the paper proposes Persistent TTA (PeTTA), which continuously monitors model divergence from the initial state using the Mahalanobis distance of feature embeddings. PeTTA adaptively adjusts the regularization coefficient (λt) and the Exponential Moving Average (EMA) update rate (αt) based on the sensed divergence, balancing adaptation and collapse prevention. It also integrates an Anchor Loss (LAL) for regularization in the probability space and leverages robust batch normalization and a category-balanced memory bank inspired by previous work.
+
+# Repository Content
+File Path: eval.py
+Content:
+import argparse
+import os
+
+import torch
+import torchvision.models as models
+import torchvision.transforms as trn
+import webdataset as wds
+
+from models import registery
+
+
+def identity(x):
+    return x
+
+
+def get_webds_loader(dset_name):
+    #url = os.path.join(dset_path, "serial_{{00000..99999}}.tar") Uncoment this to use a local copy of CCC
+    url = f'https://mlcloud.uni-tuebingen.de:7443/datasets/CCC/{dset_name}/serial_{{00000..99999}}.tar'
+
+    normalize = trn.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    preproc = trn.Compose(
+        [
+            trn.ToTensor(),
+            normalize,
+        ]
+    )
+    dataset = (
+        wds.WebDataset(url)
+        .decode("pil")
+        .to_tuple("input.jpg", "output.cls")
+        .map_tuple(preproc, identity)
+    )
+    dataloader = torch.utils.data.DataLoader(dataset, num_workers=0, batch_size=64)
+    return dataloader
+
+
+def test(model, dset_path, file_name=None):
+    total_seen_so_far = 0
+    dataset_loader = get_webds_loader(dset_path)
+
+    for i, (images, labels) in enumerate(dataset_loader):
+        images, labels = images.cuda(non_blocking=True), labels.cuda(non_blocking=True)
+        output = model(images)
+
+        num_images_in_batch = images.size(0)
+        total_seen_so_far += num_images_in_batch
+
+        vals, pred = (output).max(dim=1, keepdim=True)
+        correct_this_batch = pred.eq(labels.view_as(pred)).sum().item()
+
+        with open(file_name, "a+") as f:
+            f.write(
+                ("acc_{:.10f}\n").format(
+                    float(100 * correct_this_batch) / images.size(0)
+                )
+            )
+        if total_seen_so_far > 7500000:
+            return
+
+
+def evaluate(args):
+    torch.manual_seed(42)
+    cuda_available = torch.cuda.is_available()
+    if not cuda_available:
+        raise ValueError("CUDA not available")
+    device = torch.device("cuda")
+    exp_name = "ccc_{}".format(str(args.baseline))
+
+    if not os.path.exists(os.path.join(args.logs, exp_name)):
+        os.mkdir(os.path.join(args.logs, exp_name))
+
+    cur_seed = [43, 44, 45][args.processind % 3]
+    speed = [1000, 2000, 5000][int(args.processind / 3)]
+
+    file_name = os.path.join(
+        args.logs,
+        exp_name,
+        "model_{}_baseline_{}_transition+speed_{}_seed_{}.txt".format(
+            str(args.mode), str(args.baseline), str(speed), str(cur_seed)
+        ),
+    )
+
+    dset_name = "baseline_{}_transition+speed_{}_seed_{}".format(
+        str(args.baseline), str(speed), str(cur_seed)
+    )
+    
+    #dset_name = os.path.join(args.dset, dset_name) Uncomment this to use a local copy of CCC
+
+    model = models.resnet50(pretrained=True)
+    model.to(device)
+    model = torch.nn.parallel.DataParallel(model)
+
+    assert args.mode in registery.get_options()
+    if args.mode == "eta" or args.mode == "eata":
+        loader = get_webds_loader(dset_name)
+        model = registery.init(args.mode, model, loader, args.mode == "eta")
+    else:
+        model = registery.init(args.mode, model)
+
+    test(model, dset_path, file_name=file_name)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--mode", type=str, default="tent", choices=registery.get_options()
+    )
+    parser.add_argument("--processind", type=int, default=0)
+    parser.add_argument("--baseline", type=float, default=20)
+    parser.add_argument("--logs", type=str)
+    parser.add_argument("--dset", type=str)
+    args = parser.parse_args()
+
+    evaluate(args)
+
+File Path: generate.py
+Content:
+import argparse
+import io
+import os
+import os.path
+import pickle
+import random
+from io import BytesIO
+
+import numpy as np
+import pandas as pd
+import requests
+import torch
+import torch.utils.data as data
+import torchvision.transforms as trn
+import webdataset as wds
+from PIL import Image
+
+from make_imagenet_c import noise_dict
+
+IMGS_PER = 25000
+
+
+def path_to_dataset(path, root):
+    dir_list = []
+
+    for i in range(len(path)):
+        dir_list.append(
+            os.path.join(
+                root,
+                "s1_" + str(float(path[i][0]) / 4) + "s2_" + str(float(path[i][1]) / 4),
+            )
+        )
+
+    return dir_list
+
+
+def collect(log_path):
+    sevs = [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0,
+        1.25,
+        1.5,
+        1.75,
+        2.0,
+        2.25,
+        2.5,
+        2.75,
+        3.0,
+        3.25,
+        3.5,
+        3.75,
+        4.0,
+        4.25,
+        4.5,
+        4.75,
+        5.0,
+    ]
+
+    results = np.zeros((len(sevs), len(sevs)))
+    total = 0
+
+    with open(log_path) as f:
+        lines = f.readlines()
+
+    for line in lines:
+        line = line.split("_")
+        if len(line) < 5:  # not sure why this happens, but sometimes lines are empty
+            continue
+        s1 = line[1][:-2]
+        s2 = line[2]
+        acc = line[4]
+
+        s1 = sevs.index(float(s1))
+        s2 = sevs.index(float(s2))
+
+        results[s1][s2] = float(acc)
+        total += 1
+
+    return results
+
+
+def find_path(arr, target_val):
+    cur_max = 99999999999
+    cost_dict = {}
+    path_dict = {}
+    for i in range(1, arr.shape[0]):
+        cost_dict, path_dict = traverse_graph(
+            cost_dict, path_dict, arr, i, 0, target_val
+        )
+
+    for i in range(1, arr.shape[0]):
+        cur_cost = abs(cost_dict[(i, 0)] / len(path_dict[(i, 0)]) - target_val)
+        if cur_cost < cur_max:
+            cur_max = cur_cost
+            cur_path = path_dict[(i, 0)]
+
+    return cur_path
+
+
+def traverse_graph(cost_dict, path_dict, arr, i, j, target_val):
+    if j >= arr.shape[1]:
+        if (i, j) not in cost_dict.keys():
+            cost_dict[(i, j)] = 9999999999999
+            path_dict[(i, j)] = [9999999999999]
+        return cost_dict, path_dict
+
+    if i == 0:
+        if (i, j) not in cost_dict.keys():
+            cost_dict[(i, j)] = arr[i][j]
+            path_dict[(i, j)] = [(i, j)]
+        return cost_dict, path_dict
+
+    if (i - 1, j) not in cost_dict.keys():
+        cost_dict, path_dict = traverse_graph(
+            cost_dict, path_dict, arr, i - 1, j, target_val
+        )
+    if (i, j + 1) not in cost_dict.keys():
+        cost_dict, path_dict = traverse_graph(
+            cost_dict, path_dict, arr, i, j + 1, target_val
+        )
+
+    if abs(
+        ((cost_dict[(i - 1, j)] + arr[i][j]) / (len(path_dict[i - 1, j]) + 1))
+        - target_val
+    ) < abs(
+        ((cost_dict[(i, j + 1)] + arr[i][j]) / (len(path_dict[i, j + 1]) + 1))
+        - target_val
+    ):
+        cost_dict[(i, j)] = cost_dict[(i - 1, j)] + arr[i][j]
+        path_dict[(i, j)] = [(i, j)] + path_dict[(i - 1, j)]
+    else:
+        cost_dict[(i, j)] = cost_dict[(i, j + 1)] + arr[i][j]
+        path_dict[(i, j)] = [(i, j)] + path_dict[(i, j + 1)]
+
+    return cost_dict, path_dict
+
+
+def write_dataset(dataset, root):
+    sink = wds.TarWriter(os.path.join(root + ".tar"))
+
+    for index in range(len(dataset)):
+        input, output, info = dataset[index]
+        sink.write(
+            {
+                "__key__": "sample_" + str(index),
+                "info": info,
+                "input.jpg": input,
+                "output.cls": output,
+            }
+        )
+
+    sink.close()
+
+
+def pil_loader(path):
+    with open(path, "rb") as f:
+        img = Image.open(f)
+        return img.convert("RGB")
+
+
+def GenerateDataset(
+    data_root,
+    destination_folder,
+    speed,
+    seed,
+    baseline,
+    serial_ind=1,
+    totalprocesses=1,
+):
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+
+    cutoff = 7500000  # total amount of images to be generated
+    os.makedirs(destination_folder, exist_ok=True)
+    final_path = os.path.join(
+        destination_folder,
+        "baseline_{}_transition+speed_{}_seed_{}".format(
+            str(baseline), str(speed), str(seed)
+        ),
+    )
+    os.makedirs(final_path, exist_ok=True)
+
+    get_frost_images("./")
+    walk_dict = {}
+
+    # The baselines used for CCC-[Easy, Medium, Hard] respectively. Note that this is the baseline accuracy on the calibration set. On cropped data, this accuracy goes down a bit
+    # For each baseline accuracy, we use noises such that there isn't a lot of variance (i.e., Brightness, even at severity 5, is far from 40% baseline accuracy,
+    # therefore we do not use it.
+    if baseline >= 40:
+        noises = [
+            "gaussian_noise",
+            "shot_noise",
+            "impulse_noise",
+            "defocus_blur",
+            "glass_blur",
+            "motion_blur",
+            "zoom_blur",
+            "snow",
+            "frost",
+            "fog",
+            "contrast",
+            "elastic",
+            "pixelate",
+            "jpeg",
+        ]
+    elif baseline >= 20:
+        noises = [
+            "gaussian_noise",
+            "shot_noise",
+            "impulse_noise",
+            "defocus_blur",
+            "glass_blur",
+            "motion_blur",
+            "zoom_blur",
+            "snow",
+            "frost",
+            "fog",
+            "contrast",
+            "elastic",
+            "pixelate",
+        ]
+    else:
+        noises = [
+            "gaussian_noise",
+            "shot_noise",
+            "impulse_noise",
+            "contrast",
+        ]
+
+    pickle_path = os.path.join(destination_folder, "ccc_accuracy_matrix.pickle")
+    if not os.path.exists(pickle_path):
+        url = "https://nc.mlcloud.uni-tuebingen.de/index.php/s/izTMnXkaHoNBZT4/download/ccc_accuracy_matrix.pickle"
+        accuracy_matrix = pd.read_pickle(url)
+        os.makedirs(destination_folder, exist_ok=True)
+        with open(pickle_path, "wb") as f:
+            pickle.dump(accuracy_matrix, f)
+    else:
+        with open(pickle_path, "rb") as f:
+            accuracy_matrix = pickle.load(f)
+
+    for noise1 in noises:
+        for noise2 in noises:
+            if noise1 == noise2:
+                continue
+            noise1 = noise1.lower().replace(" ", "_")
+            noise2 = noise2.lower().replace(" ", "_")
+
+            current_accuracy_matrix = accuracy_matrix["n1_" + noise1 + "_n2_" + noise2]
+            walk = find_path(current_accuracy_matrix, baseline)
+            walk_dict[(noise1, noise2)] = walk
+
+    noise1 = random.choice(noises)
+    noise2 = random.choice(noises)
+
+    while noise2 == noise1:
+        noise2 = random.choice(noises)
+
+    walk = walk_dict[(noise1, noise2)]
+    data_path = os.path.join(data_root, "n1_" + noise1 + "_n2_" + noise2)
+    walk_datasets = path_to_dataset(walk, data_path)
+    walk_ind = 0
+
+    current_datasets = []
+    current_datasets_len = 0
+    serial = 0
+    total_generated_images = 0
+
+    while True:
+        path_split = walk_datasets[walk_ind].split("/")
+        noise_names = path_split[-2]
+        severities = path_split[-1]
+
+        noises_split = noise_names.split("_")
+        noises_split = [noise for noise in noises_split if noise not in ["n1", "n2"]]
+
+        if len(noises_split) == 2:
+            n1 = noises_split[0]
+            n2 = noises_split[1]
+        if len(noises_split) == 3:
+            question = noises_split[1]
+            if question in ["blur", "noise"]:
+                n1 = noises_split[0] + "_" + noises_split[1]
+                n2 = noises_split[2]
+            else:
+                n1 = noises_split[0]
+                n2 = noises_split[1] + "_" + noises_split[2]
+        if len(noises_split) == 4:
+            n1 = noises_split[0] + "_" + noises_split[1]
+            n2 = noises_split[2] + "_" + noises_split[3]
+
+        severities_split = severities.split("_")
+        s1 = float(severities_split[1][:-2])
+        s2 = float(severities_split[2])
+
+        if serial % totalprocesses == serial_ind:
+            current_destination_path = os.path.join(
+                final_path, "serial_" + str(serial).zfill(5)
+            )
+
+            if os.path.exists(os.path.join(current_destination_path + ".tar")):
+                if (
+                    isValid(
+                        os.path.join(current_destination_path + ".tar"),
+                        total_images=(IMGS_PER + (IMGS_PER % speed)),
+                    )
+                    == False
+                ):
+                    os.remove(os.path.join(current_destination_path + ".tar"))
+                else:
+                    current_datasets_len += speed
+                    if current_datasets_len >= IMGS_PER:
+                        total_generated_images += current_datasets_len
+                        serial += 1
+                        current_datasets = []
+                        current_datasets_len = 0
+            else:
+                cur_data = ApplyTransforms(data_root, n1, n2, s1, s2, speed)
+                assert len(cur_data) == speed
+                current_datasets.append(cur_data)
+                current_datasets_len += len(cur_data)
+
+                if current_datasets_len >= IMGS_PER:
+                    concatenated_datasets = torch.utils.data.ConcatDataset(
+                        current_datasets
+                    )
+                    write_dataset(concatenated_datasets, current_destination_path)
+                    total_generated_images += current_datasets_len
+                    serial += 1
+                    current_datasets = []
+                    current_datasets_len = 0
+
+        else:
+            current_datasets_len += speed
+            if current_datasets_len >= IMGS_PER:
+                total_generated_images += current_datasets_len
+                serial += 1
+                current_datasets = []
+                current_datasets_len = 0
+
+        if total_generated_images >= cutoff:
+            return
+
+        if walk_ind == len(walk) - 1:
+            noise1 = noise2
+
+            while noise1 == noise2:
+                noise2 = random.choice(noises)
+                noise2 = noise2.lower().replace(" ", "_")
+
+            walk = walk_dict[(noise1, noise2)]
+            data_path = os.path.join(data_root, "n1_" + noise1 + "_n2_" + noise2)
+            walk_datasets = path_to_dataset(walk, data_path)
+            walk_ind = 0
+        else:
+            walk_ind += 1
+
+
+class ApplyTransforms(data.Dataset):
+    def __init__(self, data_root, n1, n2, s1, s2, freq, use_trn2=False):
+        self.data_root = data_root
+        d = noise_dict()
+
+        self.n1 = d[n1]
+        self.n2 = d[n2]
+        self.s1 = s1
+        self.s2 = s2
+        self.use_trn2 = use_trn2
+
+        self.n1_name = n1
+        self.n2_name = n2
+
+        self.trn1 = trn.Compose(
+            [trn.RandomHorizontalFlip(), trn.RandomResizedCrop(224)]
+        )
+
+        all_paths = []
+
+        for path, dirs, files in os.walk(self.data_root):
+            for name in files:
+                all_paths.append(os.path.join(path, name))
+
+        np.random.shuffle(all_paths)
+        self.paths = all_paths
+        self.paths = self.paths[:freq]
+        all_classes = sorted(os.listdir(data_root))
+
+        target_list = []
+        for cur_path in self.paths:
+            cur_class = cur_path.split("/")[-2]
+            cur_class = all_classes.index(cur_class)
+            target_list.append(cur_class)
+
+        self.targets = target_list
+
+    def __getitem__(self, index):
+        path = self.paths[index]
+        target = self.targets[index]
+        img = pil_loader(path)
+
+        img = self.trn1(img)
+        if self.s1 > 0:
+            img = self.n1(img, self.s1)
+            img = Image.fromarray(np.uint8(img))
+        if self.s2 > 0:
+            img = self.n2(img, self.s2)
+
+        if self.s2 > 0:
+            img = Image.fromarray(np.uint8(img))
+        output = io.BytesIO()
+        img.save(output, format="JPEG", quality=85, optimize=True)
+        corrupted_img = output.getvalue()
+        info = (
+            "++dir++"
+            + str(path.split("/")[-2])
+            + "++name++"
+            + str(path.split("/")[-1])
+            + "++n1++"
+            + self.n1_name
+            + "++s1++"
+            + str(self.s1)
+            + "++n2++"
+            + self.n2_name
+            + "++s2++"
+            + str(self.s2)
+        )
+        return corrupted_img, target, info
+
+    def __len__(self):
+        return len(self.paths)
+
+
+def identity(x):
+    return x
+
+
+def isValid(url, total_images):
+    ind = (url).split("_")[-1].replace(".tar", "")
+    url = os.path.join(url[:-16], "serial_{{{}..{}}}.tar".format(ind, ind))
+    normalize = trn.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+    preproc = trn.Compose(
+        [
+            trn.ToTensor(),
+            normalize,
+        ]
+    )
+
+    dataset = (
+        wds.WebDataset(url)
+        .decode("pil")
+        .to_tuple("input.jpg", "output.cls")
+        .map_tuple(preproc, identity)
+    )
+
+    loader = iter(torch.utils.data.DataLoader(dataset, num_workers=4, batch_size=50))
+    i = 0
+    while True:
+        try:
+            img, label = next(loader)
+        except:
+            break
+        i += 1
+    if i * 50 < total_images:
+        return False
+    return True
+
+
+def get_frost_images(data_dir):
+    """
+    Downloads frost images from the ImageNet-C repo.
+    Parameters
+    ----------
+    data_dir : str
+        where the images will be saved
+    target_dir : str
+    """
+    url = "https://raw.githubusercontent.com/hendrycks/robustness/master/ImageNet-C/create_c/"
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir, exist_ok=True)
+
+    frost_images_path = os.path.join(data_dir, "frost")
+    frost_images = {
+        "frost1.png",
+        "frost2.png",
+        "frost3.png",
+        "frost4.jpg",
+        "frost5.jpg",
+        "frost6.jpg",
+    }
+    if not os.path.exists(frost_images_path):
+        os.mkdir(frost_images_path)
+
+    for image_name in frost_images.difference(set(os.listdir(frost_images_path))):
+        response = requests.get(url + image_name)
+        img = Image.open(BytesIO(response.content))
+        img.save(os.path.join(frost_images_path, image_name))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--baseline", type=float)
+    parser.add_argument("--processind", type=int)
+    parser.add_argument("--totalprocesses", type=int)
+    parser.add_argument("--imagenetval", type=str)
+    parser.add_argument("--dest", type=str)
+    args = parser.parse_args()
+
+    speed = [1000, 2000, 5000][
+        (args.processind % 9) % 3
+    ]  # transition speeds used the paper
+    seed = [43, 44, 45][
+        int((args.processind % 9) / 3)
+    ]  # random seeds used in the paper
+    serial_ind = int(args.processind / 9)
+
+    GenerateDataset(
+        data_root=args.imagenetval,
+        destination_folder=args.dest,
+        speed=speed,
+        seed=seed,
+        baseline=args.baseline,
+        serial_ind=serial_ind,
+        totalprocesses=int(args.totalprocesses / 9),
+    )
+
+File Path: make_imagenet_c.py
+Content:
+# original code copied from https://github.com/hendrycks/robustness
+# -*- coding: utf-8 -*-
+
+import os
+import os.path
+
+import numba
+import numpy as np
+from scipy import interpolate
+
+interpolation_function_dict = dict()
+
+IMG_EXTENSIONS = [".jpg", ".jpeg", ".png", ".ppm", ".bmp", ".pgm"]
+
+
+def is_image_file(filename):
+    """Checks if a file is an image.
+    Args:
+        filename (string): path to a file
+    Returns:
+        bool: True if the filename ends with a known image extension
+    """
+    filename_lower = filename.lower()
+    return any(filename_lower.endswith(ext) for ext in IMG_EXTENSIONS)
+
+
+def find_classes(dir):
+    classes = [d for d in os.listdir(dir) if os.path.isdir(os.path.join(dir, d))]
+    classes.sort()
+    class_to_idx = {classes[i]: i for i in range(len(classes))}
+    return classes, class_to_idx
+
+
+def make_dataset(dir, class_to_idx):
+    images = []
+    dir = os.path.expanduser(dir)
+    for target in sorted(os.listdir(dir)):
+        d = os.path.join(dir, target)
+        if not os.path.isdir(d):
+            continue
+
+        for root, _, fnames in sorted(os.walk(d)):
+            for fname in sorted(fnames):
+                if is_image_file(fname):
+                    path = os.path.join(root, fname)
+                    item = (path, class_to_idx[target])
+                    images.append(item)
+
+    return images
+
+
+# /////////////// Distortion Helpers ///////////////
+
+import ctypes
+import warnings
+from io import BytesIO
+
+import cv2
+import skimage as sk
+from PIL import Image as PILImage
+from scipy.ndimage import zoom as scizoom
+from scipy.ndimage.interpolation import map_coordinates
+from skimage.filters import gaussian
+from wand.api import library as wandlibrary
+from wand.image import Image as WandImage
+
+warnings.simplefilter("ignore", UserWarning)
+
+
+def auc(errs):  # area under the alteration error curve
+    area = 0
+    for i in range(1, len(errs)):
+        area += (errs[i] + errs[i - 1]) / 2
+    area /= len(errs) - 1
+    return area
+
+
+def disk(radius, alias_blur=0.1, dtype=np.float32):
+    if radius <= 8:
+        L = np.arange(-8, 8 + 1)
+        ksize = (3, 3)
+    else:
+        L = np.arange(-radius, radius + 1)
+        ksize = (5, 5)
+    X, Y = np.meshgrid(L, L)
+    aliased_disk = np.array((X**2 + Y**2) <= radius**2, dtype=dtype)
+    aliased_disk /= np.sum(aliased_disk)
+
+    # supersample disk to antialias
+    return cv2.GaussianBlur(aliased_disk, ksize=ksize, sigmaX=alias_blur)
+
+
+# Tell Python about the C method
+wandlibrary.MagickMotionBlurImage.argtypes = (
+    ctypes.c_void_p,  # wand
+    ctypes.c_double,  # radius
+    ctypes.c_double,  # sigma
+    ctypes.c_double,
+)  # angle
+
+
+# Extend wand.image.Image class to include method signature
+class MotionImage(WandImage):
+    def motion_blur(self, radius=0.0, sigma=0.0, angle=0.0):
+        wandlibrary.MagickMotionBlurImage(self.wand, radius, sigma, angle)
+
+
+# modification of https://github.com/FLHerne/mapgen/blob/master/diamondsquare.py
+def plasma_fractal(mapsize=256, wibbledecay=3):
+    """
+    Generate a heightmap using diamond-square algorithm.
+    Return square 2d array, side length 'mapsize', of floats in range 0-255.
+    'mapsize' must be a power of two.
+    """
+    assert mapsize & (mapsize - 1) == 0
+    maparray = np.empty((mapsize, mapsize), dtype=np.float_)
+    maparray[0, 0] = 0
+    stepsize = mapsize
+    wibble = 100
+
+    def wibbledmean(array):
+        return array / 4 + wibble * np.random.uniform(-wibble, wibble, array.shape)
+
+    def fillsquares():
+        """For each square of points stepsize apart,
+        calculate middle value as mean of points + wibble"""
+        cornerref = maparray[0:mapsize:stepsize, 0:mapsize:stepsize]
+        squareaccum = cornerref + np.roll(cornerref, shift=-1, axis=0)
+        squareaccum += np.roll(squareaccum, shift=-1, axis=1)
+        maparray[
+            stepsize // 2 : mapsize : stepsize, stepsize // 2 : mapsize : stepsize
+        ] = wibbledmean(squareaccum)
+
+    def filldiamonds():
+        """For each diamond of points stepsize apart,
+        calculate middle value as mean of points + wibble"""
+        mapsize = maparray.shape[0]
+        drgrid = maparray[
+            stepsize // 2 : mapsize : stepsize, stepsize // 2 : mapsize : stepsize
+        ]
+        ulgrid = maparray[0:mapsize:stepsize, 0:mapsize:stepsize]
+        ldrsum = drgrid + np.roll(drgrid, 1, axis=0)
+        lulsum = ulgrid + np.roll(ulgrid, -1, axis=1)
+        ltsum = ldrsum + lulsum
+        maparray[0:mapsize:stepsize, stepsize // 2 : mapsize : stepsize] = wibbledmean(
+            ltsum
+        )
+        tdrsum = drgrid + np.roll(drgrid, 1, axis=1)
+        tulsum = ulgrid + np.roll(ulgrid, -1, axis=0)
+        ttsum = tdrsum + tulsum
+        maparray[stepsize // 2 : mapsize : stepsize, 0:mapsize:stepsize] = wibbledmean(
+            ttsum
+        )
+
+    while stepsize >= 2:
+        fillsquares()
+        filldiamonds()
+        stepsize //= 2
+        wibble /= wibbledecay
+
+    maparray -= maparray.min()
+    return maparray / maparray.max()
+
+
+def clipped_zoom(img, zoom_factor):
+    h = img.shape[0]
+    # ceil crop height(= crop width)
+    ch = int(np.ceil(h / zoom_factor))
+
+    top = (h - ch) // 2
+    img = scizoom(
+        img[top : top + ch, top : top + ch], (zoom_factor, zoom_factor, 1), order=1
+    )
+    # trim off any extra pixels
+    trim_top = (img.shape[0] - h) // 2
+
+    return img[trim_top : trim_top + h, trim_top : trim_top + h]
+
+
+# /////////////// End Distortion Helpers ///////////////
+
+
+# /////////////// Distortions ///////////////
+def gaussian_noise(x, severity=1):
+    if "gaussian noise" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [0.0, 0.08, 0.12, 0.18, 0.26, 0.38],
+            axis=0,
+            kind="linear",
+        )
+        interpolation_function_dict["gaussian noise"] = f
+
+    f = interpolation_function_dict["gaussian noise"]
+
+    c = f(severity)
+
+    x = np.array(x) / 255.0
+    return np.clip(x + np.random.normal(size=x.shape, scale=c), 0, 1) * 255
+
+
+def shot_noise(x, severity=1):
+    if "shot noise" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [
+                0,
+                float(1) / 60,
+                float(1) / 25,
+                float(1) / 12,
+                float(1) / 5,
+                float(1) / 3,
+            ],
+            axis=0,
+            kind="linear",
+        )
+        interpolation_function_dict["shot noise"] = f
+
+    f = interpolation_function_dict["shot noise"]
+
+    c = f(severity)
+    if c != 0:
+        c = float(1) / c
+    else:
+        c = 9999
+
+    x = np.array(x) / 255.0
+    return np.clip(np.random.poisson(x * c) / c, 0, 1) * 255
+
+
+def impulse_noise(x, severity=1):
+    if "impulse noise" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5], [0, 0.03, 0.06, 0.09, 0.17, 0.27], axis=0, kind="linear"
+        )
+        interpolation_function_dict["impulse noise"] = f
+
+    f = interpolation_function_dict["impulse noise"]
+
+    c = f(severity)
+
+    x = sk.util.random_noise(np.array(x) / 255.0, mode="s&p", amount=c)
+    return np.clip(x, 0, 1) * 255
+
+
+def glass_blur_slow(x, severity=1):
+    if "glass blur" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [
+                (0.0, 0.0, 0.0),
+                (0.7, 1, 2),
+                (0.9, 2, 1),
+                (1, 2, 3),
+                (1.1, 3, 2),
+                (1.5, 4, 2),
+            ],
+            axis=0,
+            kind="linear",
+        )
+        interpolation_function_dict["glass blur"] = f
+
+    f = interpolation_function_dict["glass blur"]
+
+    c = f(severity)
+
+    if c[1] < 1:
+        c[1] = 1
+
+    x = np.uint8(gaussian(np.array(x) / 255.0, sigma=c[0], multichannel=True) * 255)
+
+    # locally shuffle pixels
+    for i in range(round(c[2])):
+        for h in range(224 - round(c[1]), round(c[1]), -1):
+            for w in range(224 - round(c[1]), round(c[1]), -1):
+                dx, dy = np.random.randint(-round(c[1]), round(c[1]), size=(2,))
+                h_prime, w_prime = h + dy, w + dx
+                # swap
+                x[h, w], x[h_prime, w_prime] = x[h_prime, w_prime], x[h, w]
+
+    return np.clip(gaussian(x / 255.0, sigma=c[0], multichannel=True), 0, 1) * 255
+
+
+@numba.jit()
+def shuffle_pixels(x, c):
+    # locally shuffle pixels
+    for i in range(round(c[2])):
+        for h in range(224 - round(c[1]), round(c[1]), -1):
+            for w in range(224 - round(c[1]), round(c[1]), -1):
+                dx, dy = np.random.randint(-round(c[1]), round(c[1]), size=(2,))
+                h_prime, w_prime = h + dy, w + dx
+                # swap
+                x[h, w], x[h_prime, w_prime] = x[h_prime, w_prime], x[h, w]
+    return x
+
+
+def glass_blur(x, severity=1):
+    if "glass blur" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [
+                (0.0, 0.0, 0.0),
+                (0.7, 1, 2),
+                (0.9, 2, 1),
+                (1, 2, 3),
+                (1.1, 3, 2),
+                (1.5, 4, 2),
+            ],
+            axis=0,
+            kind="linear",
+        )
+        interpolation_function_dict["glass blur"] = f
+
+    f = interpolation_function_dict["glass blur"]
+
+    c = f(severity)
+
+    if c[1] < 1:
+        c[1] = 1
+
+    x = np.uint8(gaussian(np.array(x) / 255.0, sigma=c[0], multichannel=True) * 255)
+
+    shuffle_pixels(x, c)
+
+    return np.clip(gaussian(x / 255.0, sigma=c[0], multichannel=True), 0, 1) * 255
+
+
+def defocus_blur(x, severity=1):
+    if "defocus blur" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [(0.0, 0.0), (3, 0.1), (4, 0.5), (6, 0.5), (8, 0.5), (10, 0.5)],
+            axis=0,
+            kind="linear",
+        )
+        interpolation_function_dict["defocus blur"] = f
+
+    f = interpolation_function_dict["defocus blur"]
+
+    c = f(severity)
+
+    x = np.array(x) / 255.0
+    kernel = disk(radius=c[0], alias_blur=c[1])
+
+    channels = []
+    for d in range(3):
+        channels.append(cv2.filter2D(x[:, :, d], -1, kernel))
+    channels = np.array(channels).transpose((1, 2, 0))  # 3x224x224 -> 224x224x3
+
+    return np.clip(channels, 0, 1) * 255
+
+
+def motion_blur(x, severity=1):
+    if "motion blur" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [(0.0, 0.0), (10, 3), (15, 5), (15, 8), (15, 12), (20, 15)],
+            axis=0,
+            kind="linear",
+        )
+        interpolation_function_dict["motion blur"] = f
+
+    f = interpolation_function_dict["motion blur"]
+
+    c = f(severity)
+
+    output = BytesIO()
+    x.save(output, format="PNG")
+    x = MotionImage(blob=output.getvalue())
+
+    x.motion_blur(radius=c[0], sigma=c[1], angle=np.random.uniform(-45, 45))
+
+    x = cv2.imdecode(np.fromstring(x.make_blob(), np.uint8), cv2.IMREAD_UNCHANGED)
+
+    if x.shape != (224, 224):
+        return np.clip(x[..., [2, 1, 0]], 0, 255)  # BGR to RGB
+    else:  # greyscale to RGB
+        return np.clip(np.array([x, x, x]).transpose((1, 2, 0)), 0, 255)
+
+
+def zoom_blur(x, severity=1):
+    if "zoom blur" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [
+                (1.0, 1.0, 0.01),
+                (1, 1.11, 0.01),
+                (1, 1.16, 0.01),
+                (1, 1.21, 0.02),
+                (1, 1.26, 0.02),
+                (1, 1.31, 0.03),
+            ],
+            axis=0,
+            kind="linear",
+        )
+        interpolation_function_dict["zoom blur"] = f
+
+    f = interpolation_function_dict["zoom blur"]
+
+    c = f(severity)
+    c = np.arange(c[0], c[1], c[2])
+
+    x = (np.array(x) / 255.0).astype(np.float32)
+    out = np.zeros_like(x)
+    for zoom_factor in c:
+        out += clipped_zoom(x, zoom_factor)
+
+    x = (x + out) / (len(c) + 1)
+    return np.clip(x, 0, 1) * 255
+
+
+def fog(x, severity=1):
+    if "fog" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [(0.0, 2.0), (1.5, 2), (2, 2), (2.5, 1.7), (2.5, 1.5), (3, 1.4)],
+            axis=0,
+            kind="linear",
+        )
+        interpolation_function_dict["fog"] = f
+
+    f = interpolation_function_dict["fog"]
+
+    c = f(severity)
+    x = np.array(x) / 255.0
+    max_val = x.max()
+    x += c[0] * plasma_fractal(wibbledecay=c[1])[:224, :224][..., np.newaxis]
+    return np.clip(x * max_val / (max_val + c[0]), 0, 1) * 255
+
+
+def frost(x, severity=1):
+    if "frost" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [(1.0, 0.0), (1, 0.4), (0.8, 0.6), (0.7, 0.7), (0.65, 0.7), (0.6, 0.75)],
+            axis=0,
+            kind="linear",
+        )
+
+        interpolation_function_dict["frost"] = f
+
+    f = interpolation_function_dict["frost"]
+
+    c = f(severity)
+
+    idx = np.random.randint(5)
+    filename = [
+        "./frost/frost1.png",
+        "./frost/frost2.png",
+        "./frost/frost3.png",
+        "./frost/frost4.jpg",
+        "./frost/frost5.jpg",
+        "./frost/frost6.jpg",
+    ][idx]
+    filename = os.path.abspath(filename)
+    frost = cv2.imread(os.path.abspath(filename))
+    # frost = cv2.cv.LoadImage(os.path.abspath(filename), CV_LOAD_IMAGE_COLOR)
+    # randomly crop and convert to rgb
+    x_start, y_start = np.random.randint(0, frost.shape[0] - 224), np.random.randint(
+        0, frost.shape[1] - 224
+    )
+    frost = frost[x_start : x_start + 224, y_start : y_start + 224][..., [2, 1, 0]]
+
+    return np.clip(c[0] * np.array(x) + c[1] * frost, 0, 255)
+
+
+def snow(x, severity=1):
+    if "snow" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [
+                (0.1, 0.3, 3, 1.0, 10, 4, 1.0),
+                (0.1, 0.3, 3, 0.5, 10, 4, 0.8),
+                (0.2, 0.3, 2, 0.5, 12, 4, 0.7),
+                (0.55, 0.3, 4, 0.9, 12, 8, 0.7),
+                (0.55, 0.3, 4.5, 0.85, 12, 8, 0.65),
+                (0.55, 0.3, 2.5, 0.85, 12, 12, 0.55),
+            ],
+            axis=0,
+            kind="linear",
+        )
+        interpolation_function_dict["snow"] = f
+
+    f = interpolation_function_dict["snow"]
+
+    c = f(severity)
+
+    x = np.array(x, dtype=np.float32) / 255.0
+    snow_layer = np.random.normal(
+        size=x.shape[:2], loc=c[0], scale=c[1]
+    )  # [:2] for monochrome
+
+    snow_layer = clipped_zoom(snow_layer[..., np.newaxis], c[2])
+    snow_layer[snow_layer < c[3]] = 0
+
+    snow_layer = PILImage.fromarray(
+        (np.clip(snow_layer.squeeze(), 0, 1) * 255).astype(np.uint8), mode="L"
+    )
+    output = BytesIO()
+    snow_layer.save(output, format="PNG")
+    snow_layer = MotionImage(blob=output.getvalue())
+
+    snow_layer.motion_blur(radius=c[4], sigma=c[5], angle=np.random.uniform(-135, -45))
+
+    snow_layer = (
+        cv2.imdecode(
+            np.fromstring(snow_layer.make_blob(), np.uint8), cv2.IMREAD_UNCHANGED
+        )
+        / 255.0
+    )
+    snow_layer = snow_layer[..., np.newaxis]
+
+    x = c[6] * x + (1 - c[6]) * np.maximum(
+        x, cv2.cvtColor(x, cv2.COLOR_RGB2GRAY).reshape(224, 224, 1) * 1.5 + 0.5
+    )
+    return np.clip(x + snow_layer + np.rot90(snow_layer, k=2), 0, 1) * 255
+
+
+def contrast(x, severity=1):
+    if "contrast" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5], [1.0, 0.4, 0.3, 0.2, 0.1, 0.05], axis=0, kind="linear"
+        )
+        interpolation_function_dict["contrast"] = f
+
+    f = interpolation_function_dict["contrast"]
+    c = f(severity)
+
+    x = np.array(x) / 255.0
+    means = np.mean(x, axis=(0, 1), keepdims=True)
+    return np.clip((x - means) * c + means, 0, 1) * 255
+
+
+def brightness(x, c):
+    if "brightness" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5], [0.0, 0.1, 0.2, 0.3, 0.4, 0.5], kind="linear"
+        )
+        interpolation_function_dict["brightness"] = f
+
+    f = interpolation_function_dict["brightness"]
+    c = f(c)
+
+    x = np.array(x) / 255.0
+    x = sk.color.rgb2hsv(x)
+    x[:, :, 2] = np.clip(x[:, :, 2] + c, 0, 1)
+    x = sk.color.hsv2rgb(x)
+
+    return np.clip(x, 0, 1) * 255
+
+
+def jpeg_compression(x, severity=1):
+    if "jpeg" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5], [85, 25, 18, 15, 10, 7], axis=0, kind="linear"
+        )
+        interpolation_function_dict["jpeg"] = f
+
+    f = interpolation_function_dict["jpeg"]
+    c = f(severity)
+
+    c = round(c.item())
+    output = BytesIO()
+
+    x.save(output, "JPEG", quality=c)
+    x = PILImage.open(output)
+    return x
+
+
+def pixelate(x, severity=1):
+    if "pixelate" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5], [1.0, 0.6, 0.5, 0.4, 0.3, 0.25], axis=0, kind="linear"
+        )
+        interpolation_function_dict["pixelate"] = f
+
+    f = interpolation_function_dict["pixelate"]
+    c = f(severity)
+
+    x = x.resize((int(224 * c), int(224 * c)), PILImage.BOX)
+    x = x.resize((224, 224), PILImage.BOX)
+    return x
+
+
+def elastic_transform(image, severity=1):
+    if "elastic_transform" not in interpolation_function_dict.keys():
+        f = interpolate.interp1d(
+            [0, 1, 2, 3, 4, 5],
+            [
+                (0, 999, 0),
+                (244 * 2, 244 * 0.7, 244 * 0.1),
+                (244 * 2, 244 * 0.08, 244 * 0.2),
+                (244 * 0.05, 244 * 0.01, 244 * 0.02),
+                (244 * 0.07, 244 * 0.01, 244 * 0.02),
+                (244 * 0.12, 244 * 0.01, 244 * 0.02),
+            ],
+            axis=0,
+            kind="linear",
+        )
+        interpolation_function_dict["elastic_transform"] = f
+
+    f = interpolation_function_dict["elastic_transform"]
+    c = f(severity)
+
+    image = np.array(image, dtype=np.float32) / 255.0
+    shape = image.shape
+    shape_size = shape[:2]
+
+    # random affine
+    center_square = np.float32(shape_size) // 2
+    square_size = min(shape_size) // 3
+    pts1 = np.float32(
+        [
+            center_square + square_size,
+            [center_square[0] + square_size, center_square[1] - square_size],
+            center_square - square_size,
+        ]
+    )
+    pts2 = pts1 + np.random.uniform(-c[2], c[2], size=pts1.shape).astype(np.float32)
+    M = cv2.getAffineTransform(pts1, pts2)
+    image = cv2.warpAffine(
+        image, M, shape_size[::-1], borderMode=cv2.BORDER_REFLECT_101
+    )
+
+    dx = (
+        gaussian(
+            np.random.uniform(-1, 1, size=shape[:2]), c[1], mode="reflect", truncate=3
+        )
+        * c[0]
+    ).astype(np.float32)
+    dy = (
+        gaussian(
+            np.random.uniform(-1, 1, size=shape[:2]), c[1], mode="reflect", truncate=3
+        )
+        * c[0]
+    ).astype(np.float32)
+    dx, dy = dx[..., np.newaxis], dy[..., np.newaxis]
+
+    x, y, z = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]), np.arange(shape[2]))
+    indices = (
+        np.reshape(y + dy, (-1, 1)),
+        np.reshape(x + dx, (-1, 1)),
+        np.reshape(z, (-1, 1)),
+    )
+    return (
+        np.clip(
+            map_coordinates(image, indices, order=1, mode="reflect").reshape(shape),
+            0,
+            1,
+        )
+        * 255
+    )
+
+
+# /////////////// End Distortions ///////////////
+
+
+def noise_dict():
+    import collections
+
+    d = collections.OrderedDict()
+    d["gaussian_noise"] = gaussian_noise
+    d["shot_noise"] = shot_noise
+    d["impulse_noise"] = impulse_noise
+    d["defocus_blur"] = defocus_blur
+    d["glass_blur"] = glass_blur
+    d["motion_blur"] = motion_blur
+    d["zoom_blur"] = zoom_blur
+    d["snow"] = snow
+    d["frost"] = frost
+    d["fog"] = fog
+    d["brightness"] = brightness
+    d["contrast"] = contrast
+    d["elastic"] = elastic_transform
+    d["pixelate"] = pixelate
+    d["jpeg"] = jpeg_compression
+    return d
+
+
+if __name__ == "__main__":
+    pass
+
+File Path: models/__init__.py
+Content:
+from .batchnorm import BNAdapt
+from .conjugate import ConjugateLoss
+from .cotta import CoTTA
+from .eata import EATA
+from .rdumb import RDumb
+from .pretrained import Pretrained
+from .registery import AdaptiveModel, register
+from .rpl import RPL
+from .tent import Tent
+
+File Path: models/batchnorm.py
+Content:
+import torch
+
+from models import AdaptiveModel, register
+from models.functional import erase_bn_stats
+
+
+@register("batchnorm")
+class BNAdapt(AdaptiveModel):
+    def __init__(self, model):
+        super().__init__(model)
+        model = erase_bn_stats(model)
+        self.model = model
+        self.model = model.train()
+
+    def forward(self, x):
+        with torch.no_grad():
+            outputs = self.model(x)
+        return outputs
+
+File Path: models/conjugate.py
+Content:
+import torch
+import torch.jit
+import torch.nn.functional as F
+
+from models import AdaptiveModel, register
+from models.functional import collect_params, configure_model
+
+
+@register("conjugate")
+class ConjugateLoss(AdaptiveModel):
+    def __init__(self, model, lr=0.001, momentum=0.9):
+        super().__init__(model)
+        self.lr = lr
+        self.momentum = momentum
+        model = configure_model(model)
+        params, param_names = collect_params(model)
+        self.model = model
+        self.optimizer = torch.optim.SGD(params, lr=self.lr, momentum=self.momentum)
+
+    def forward(self, x):
+        eps = 8.0
+        outputs = self.model(x)
+        softmax_prob = F.softmax(outputs, dim=1)
+        smax_inp = softmax_prob
+
+        eye = torch.eye(1000).to(outputs.device)
+        eye = eye.reshape((1, 1000, 1000))
+        eye = eye.repeat(outputs.shape[0], 1, 1)
+        t2 = eps * torch.diag_embed(smax_inp)
+        smax_inp = torch.unsqueeze(smax_inp, 2)
+        t3 = eps * torch.bmm(smax_inp, torch.transpose(smax_inp, 1, 2))
+        matrix = eye + t2 - t3
+        y_star = torch.linalg.solve(matrix, smax_inp)
+        y_star = torch.squeeze(y_star)
+
+        pseudo_prob = y_star
+        loss = torch.logsumexp(outputs, dim=1) - (
+            pseudo_prob * outputs - eps * pseudo_prob * (1 - softmax_prob)
+        ).sum(dim=1)
+        loss = loss.mean()
+        loss.backward()
+        self.optimizer.step()
+        self.optimizer.zero_grad(set_to_none=True)
+        return outputs
+
+File Path: models/cotta.py
+Content:
+from copy import deepcopy
+
+import PIL
+import torch
+import torch.jit
+import torchvision.transforms as transforms
+import torchvision.transforms.functional as F
+from numpy import random
+from torchvision.transforms import ColorJitter, Compose, Lambda
+
+from models import AdaptiveModel, register
+from models.functional import collect_params, configure_model
+
+
+@register("cotta")
+class CoTTA(AdaptiveModel):
+    """CoTTA adapts a model by entropy minimization during testing.
+
+    Once tented, a model adapts itself by updating on every forward.
+    """
+
+    def __init__(self, model, lr=0.01, momentum=0.9):
+        super().__init__(model)
+        self.lr = lr
+        self.momentum = momentum
+        model = configure_model(model)
+        params, param_names = collect_params(model)
+        self.model = model
+
+        optimizer = torch.optim.SGD(
+            params, lr=self.lr, momentum=self.momentum, nesterov=True
+        )
+        self.optimizer = optimizer
+
+        (
+            self.model_state,
+            self.optimizer_state,
+            self.model_ema,
+            self.model_anchor,
+        ) = self.copy_model_and_optimizer(self.model, self.optimizer)
+        self.transform = get_tta_transforms()
+
+    def forward(self, x):
+        outputs = self.model(x)
+        self.model.cpu()
+        self.model_ema.train()
+        # Teacher Prediction
+        self.model_anchor.cuda()
+        anchor_prob = torch.nn.functional.softmax(self.model_anchor(x), dim=1).max(1)[0]
+        self.model_anchor.cpu()
+        self.model_ema.cuda()
+        standard_ema = self.model_ema(x)
+        # Augmentation-averaged Prediction
+        N = 32
+        outputs_emas = []
+        to_aug = anchor_prob.mean(0) < 0.1
+        if to_aug:
+            for i in range(N):
+                outputs_ = self.model_ema(self.transform(x)).detach()
+                outputs_emas.append(outputs_)
+        # Threshold choice discussed in supplementary
+        self.model_ema.cpu()
+        if to_aug:
+            outputs_ema = torch.stack(outputs_emas).mean(0)
+        else:
+            outputs_ema = standard_ema
+        # Augmentation-averaged Prediction
+        # Student update
+        self.model.cuda()
+        loss = (softmax_entropy(outputs, outputs_ema.detach())).mean(0)
+        loss.backward()
+        self.optimizer.step()
+        self.optimizer.zero_grad(set_to_none=True)
+        # Teacher update
+        self.model_ema.cuda()
+        self.model_ema = update_ema_variables(
+            ema_model=self.model_ema, model=self.model, alpha_teacher=0.999
+        )
+        self.model_ema.cpu()
+        # Stochastic restore
+        if True:
+            for nm, m in self.model.named_modules():
+                for npp, p in m.named_parameters():
+                    if npp in ["weight", "bias"] and p.requires_grad:
+                        mask = (torch.rand(p.shape) < 0.001).float().cuda()
+                        with torch.no_grad():
+                            p.data = self.model_state[f"{nm}.{npp}"] * mask + p * (
+                                1.0 - mask
+                            )
+
+        return outputs_ema
+
+    def copy_model_and_optimizer(self, model, optimizer):
+        """Copy the model and optimizer states for resetting after adaptation."""
+        model_state = deepcopy(model.state_dict())
+        model_anchor = deepcopy(model)
+        optimizer_state = deepcopy(optimizer.state_dict())
+        ema_model = deepcopy(model)
+        for param in ema_model.parameters():
+            param.detach_()
+        return model_state, optimizer_state, ema_model, model_anchor
+
+
+class GaussianNoise(torch.nn.Module):
+    def __init__(self, mean=0.0, std=1.0):
+        super().__init__()
+        self.std = std
+        self.mean = mean
+
+    def forward(self, img):
+        noise = torch.randn(img.size()) * self.std + self.mean
+        noise = noise.to(img.device)
+        return img + noise
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(mean={0}, std={1})".format(
+            self.mean, self.std
+        )
+
+
+class Clip(torch.nn.Module):
+    def __init__(self, min_val=0.0, max_val=1.0):
+        super().__init__()
+        self.min_val = min_val
+        self.max_val = max_val
+
+    def forward(self, img):
+        return torch.clip(img, self.min_val, self.max_val)
+
+    def __repr__(self):
+        return self.__class__.__name__ + "(min_val={0}, max_val={1})".format(
+            self.min_val, self.max_val
+        )
+
+
+class ColorJitterPro(ColorJitter):
+    """Randomly change the brightness, contrast, saturation, and gamma correction of an image."""
+
+    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0, gamma=0):
+        super().__init__(brightness, contrast, saturation, hue)
+        self.gamma = self._check_input(gamma, "gamma")
+
+    @staticmethod
+    @torch.jit.unused
+    def get_params(brightness, contrast, saturation, hue, gamma):
+        """Get a randomized transform to be applied on image.
+
+        Arguments are same as that of __init__.
+
+        Returns:
+            Transform which randomly adjusts brightness, contrast and
+            saturation in a random order.
+        """
+        transforms = []
+
+        if brightness is not None:
+            brightness_factor = random.uniform(brightness[0], brightness[1])
+            transforms.append(
+                Lambda(lambda img: F.adjust_brightness(img, brightness_factor))
+            )
+
+        if contrast is not None:
+            contrast_factor = random.uniform(contrast[0], contrast[1])
+            transforms.append(
+                Lambda(lambda img: F.adjust_contrast(img, contrast_factor))
+            )
+
+        if saturation is not None:
+            saturation_factor = random.uniform(saturation[0], saturation[1])
+            transforms.append(
+                Lambda(lambda img: F.adjust_saturation(img, saturation_factor))
+            )
+
+        if hue is not None:
+            hue_factor = random.uniform(hue[0], hue[1])
+            transforms.append(Lambda(lambda img: F.adjust_hue(img, hue_factor)))
+
+        if gamma is not None:
+            gamma_factor = random.uniform(gamma[0], gamma[1])
+            transforms.append(Lambda(lambda img: F.adjust_gamma(img, gamma_factor)))
+
+        random.shuffle(transforms)
+        transform = Compose(transforms)
+
+        return transform
+
+    def forward(self, img):
+        """
+        Args:
+            img (PIL Image or Tensor): Input image.
+
+        Returns:
+            PIL Image or Tensor: Color jittered image.
+        """
+        fn_idx = torch.randperm(5)
+        for fn_id in fn_idx:
+            if fn_id == 0 and self.brightness is not None:
+                brightness = self.brightness
+                brightness_factor = (
+                    torch.tensor(1.0).uniform_(brightness[0], brightness[1]).item()
+                )
+                img = F.adjust_brightness(img, brightness_factor)
+
+            if fn_id == 1 and self.contrast is not None:
+                contrast = self.contrast
+                contrast_factor = (
+                    torch.tensor(1.0).uniform_(contrast[0], contrast[1]).item()
+                )
+                img = F.adjust_contrast(img, contrast_factor)
+
+            if fn_id == 2 and self.saturation is not None:
+                saturation = self.saturation
+                saturation_factor = (
+                    torch.tensor(1.0).uniform_(saturation[0], saturation[1]).item()
+                )
+                img = F.adjust_saturation(img, saturation_factor)
+
+            if fn_id == 3 and self.hue is not None:
+                hue = self.hue
+                hue_factor = torch.tensor(1.0).uniform_(hue[0], hue[1]).item()
+                img = F.adjust_hue(img, hue_factor)
+
+            if fn_id == 4 and self.gamma is not None:
+                gamma = self.gamma
+                gamma_factor = torch.tensor(1.0).uniform_(gamma[0], gamma[1]).item()
+                img = img.clamp(
+                    1e-8, 1.0
+                )  # to fix Nan values in gradients, which happens when applying gamma
+                # after contrast
+                img = F.adjust_gamma(img, gamma_factor)
+
+        return img
+
+    def __repr__(self):
+        format_string = self.__class__.__name__ + "("
+        format_string += "brightness={0}".format(self.brightness)
+        format_string += ", contrast={0}".format(self.contrast)
+        format_string += ", saturation={0}".format(self.saturation)
+        format_string += ", hue={0})".format(self.hue)
+        format_string += ", gamma={0})".format(self.gamma)
+        return format_string
+
+
+def get_tta_transforms(gaussian_std: float = 0.005, soft=False, clip_inputs=False):
+    img_shape = (224, 224, 3)
+    n_pixels = img_shape[0]
+
+    clip_min, clip_max = 0.0, 1.0
+
+    p_hflip = 0.5
+
+    tta_transforms = transforms.Compose(
+        [
+            Clip(0.0, 1.0),
+            ColorJitterPro(
+                brightness=[0.8, 1.2] if soft else [0.6, 1.4],
+                contrast=[0.85, 1.15] if soft else [0.7, 1.3],
+                saturation=[0.75, 1.25] if soft else [0.5, 1.5],
+                hue=[-0.03, 0.03] if soft else [-0.06, 0.06],
+                gamma=[0.85, 1.15] if soft else [0.7, 1.3],
+            ),
+            transforms.Pad(padding=int(n_pixels / 2), padding_mode="edge"),
+            transforms.RandomAffine(
+                degrees=[-8, 8] if soft else [-15, 15],
+                translate=(1 / 16, 1 / 16),
+                scale=(0.95, 1.05) if soft else (0.9, 1.1),
+                shear=None,
+                interpolation=PIL.Image.BILINEAR,
+                fill=None,
+            ),
+            transforms.GaussianBlur(
+                kernel_size=5, sigma=[0.001, 0.25] if soft else [0.001, 0.5]
+            ),
+            transforms.CenterCrop(size=n_pixels),
+            transforms.RandomHorizontalFlip(p=p_hflip),
+            GaussianNoise(0, gaussian_std),
+            Clip(clip_min, clip_max),
+        ]
+    )
+    return tta_transforms
+
+
+def update_ema_variables(ema_model, model, alpha_teacher):  # , iteration):
+    for ema_param, param in zip(ema_model.parameters(), model.parameters()):
+        ema_param.data[:] = (
+            alpha_teacher * ema_param[:].data[:]
+            + (1 - alpha_teacher) * param[:].data[:]
+        )
+    return ema_model
+
+
+def softmax_entropy(x, x_ema):  # -> torch.Tensor:
+    """Entropy of softmax distribution from logits."""
+    return -0.5 * (x_ema.softmax(1) * x.log_softmax(1)).sum(1) - 0.5 * (
+        x.softmax(1) * x_ema.log_softmax(1)
+    ).sum(1)
+
+File Path: models/eata.py
+Content:
+# original code copied from https://github.com/mr-eggplant/EATA
+"""
+Copyright to EATA ICML 2022 Authors, 2022.03.20
+Based on Tent ICLR 2021 Spotlight.
+"""
+import math
+
+import torch
+import torch.jit
+import torch.nn as nn
+import torch.nn.functional as F
+
+from models import AdaptiveModel, register
+
+
+@register("eata")
+@register("eta")
+class EATA(AdaptiveModel):
+    """EATA adapts a model by entropy minimization during testing.
+    Once EATAed, a model adapts itself by updating on every forward.
+    """
+
+    def __init__(self, model, loader, eta=False):
+        super().__init__(model)
+        self.num_samples_update_1 = (
+            0  # number of samples after First filtering, exclude unreliable samples
+        )
+        self.num_samples_update_2 = 0  # number of samples after Second filtering, exclude both unreliable and redundant samples
+        self.e_margin = 0.4 * math.log(1000)  # hyper-parameter E_0 (Eqn. 3)
+        self.d_margin = (
+            0.05  # hyper-parameter \epsilon for consine simlarity thresholding (Eqn. 5)
+        )
+
+        self.current_model_probs = (
+            None  # the moving average of probability vector (Eqn. 4)
+        )
+
+        if eta == False:
+            self.fisher_alpha = 2000.0  # trade-off \beta for two losses (Eqn. 8)
+            self.fishers = self.get_fisher_vectors(
+                model, 2000, loader
+            )  # fisher regularizer items for anti-forgetting, need to be calculated pre model adaptation (Eqn. 9)
+        else:
+            self.fisher_alpha = 0
+            self.fishers = None
+
+        params, param_names = collect_params(model)
+        model = configure_model(model)
+        self.model = model
+        self.optimizer = torch.optim.SGD(params, 0.00025, momentum=0.9)
+
+    @torch.enable_grad()  # ensure grads in possible no grad context for testing
+    def forward(
+        self,
+        x,
+    ):
+        # forward
+        outputs = self.model(x)
+        # adapt
+        entropys = softmax_entropy(outputs)
+        # filter unreliable samples
+        filter_ids_1 = torch.where(entropys < self.e_margin)
+        ids1 = filter_ids_1
+        ids2 = torch.where(ids1[0] > -0.1)
+        entropys = entropys[filter_ids_1]
+        self.ent = entropys.size(0)
+        # filter redundant samples
+        if self.current_model_probs is not None:
+            cosine_similarities = F.cosine_similarity(
+                self.current_model_probs.unsqueeze(dim=0),
+                outputs[filter_ids_1].softmax(1).detach(),
+                dim=1,
+            )
+            filter_ids_2 = torch.where(torch.abs(cosine_similarities) < self.d_margin)
+            self.div = filter_ids_2[0].size(0)
+            entropys = entropys[filter_ids_2]
+            ids2 = filter_ids_2
+            updated_probs = self.update_model_probs(
+                self.current_model_probs,
+                outputs[filter_ids_1][filter_ids_2].softmax(1).detach(),
+            )
+        else:
+            updated_probs = self.update_model_probs(
+                self.current_model_probs, outputs[filter_ids_1].softmax(1)
+            )
+        coeff = 1 / (torch.exp(entropys.clone().detach() - self.e_margin))
+        # implementation version 1, compute loss, all samples backward (some unselected are masked)
+        entropys = entropys.mul(coeff)  # reweight entropy losses for diff. samples
+        loss = entropys.mean(0)
+        """
+        # implementation version 2, compute loss, forward all batch, forward and backward selected samples again.
+        # if x[ids1][ids2].size(0) != 0:
+        #     loss = softmax_entropy(model(x[ids1][ids2])).mul(coeff).mean(0) # reweight entropy losses for diff. samples
+        """
+        if self.fishers is not None:
+            ewc_loss = 0
+            for name, param in self.model.named_parameters():
+                if name in self.fishers:
+                    ewc_loss += (
+                        self.fisher_alpha
+                        * (
+                            self.fishers[name][0] * (param - self.fishers[name][1]) ** 2
+                        ).sum()
+                    )
+            loss += ewc_loss
+        if x[ids1][ids2].size(0) != 0:
+            self.backward_step = x[ids1][ids2].size(0)
+            loss.backward()
+            self.optimizer.step()
+        else:
+            self.backward_step = 0
+        self.optimizer.zero_grad(set_to_none=True)
+
+        self.num_samples_update_2 += entropys.size(0)
+        self.num_samples_update_1 += filter_ids_1[0].size(0)
+        self.current_model_probs = updated_probs
+
+        return outputs
+
+    def update_model_probs(self, current_model_probs, new_probs):
+        if current_model_probs is None:
+            if new_probs.size(0) == 0:
+                return None
+            else:
+                with torch.no_grad():
+                    return new_probs.mean(0)
+        else:
+            if new_probs.size(0) == 0:
+                with torch.no_grad():
+                    return current_model_probs
+            else:
+                with torch.no_grad():
+                    return 0.9 * current_model_probs + (1 - 0.9) * new_probs.mean(0)
+
+    def get_fisher_vectors(self, model, fisher_amount, loader):
+        model = configure_model(model)
+        params, param_names = collect_params(model)
+        ewc_optimizer = torch.optim.SGD(params, 0.001)
+        fishers = {}
+        train_loss_fn = nn.CrossEntropyLoss().cuda()
+        for iter_, (images, targets) in enumerate(loader, start=1):
+            images = images.cuda(non_blocking=True)
+            outputs = model(images)
+            _, targets = outputs.max(1)
+            loss = train_loss_fn(outputs, targets)
+            loss.backward()
+            for name, param in model.named_parameters():
+                if param.grad is not None:
+                    if iter_ > 1:
+                        fisher = (
+                            param.grad.data.clone().detach() ** 2 + fishers[name][0]
+                        )
+                    else:
+                        fisher = param.grad.data.clone().detach() ** 2
+                    if iter_ * 64 >= fisher_amount: # loader uses a batch size of 64
+                        fisher = fisher / iter_
+                    fishers.update({name: [fisher, param.data.clone().detach()]})
+            ewc_optimizer.zero_grad()
+            if iter_ * 64 >= fisher_amount:
+                break
+        
+        del ewc_optimizer
+        del loader
+
+        return fishers
+
+
+from models.functional import collect_params, configure_model, softmax_entropy
+
+File Path: models/functional.py
+Content:
+from copy import deepcopy
+
+import torch.jit
+import torch.nn as nn
+
+
+@torch.jit.script
+def softmax_entropy(x: torch.Tensor) -> torch.Tensor:
+    """Entropy of softmax distribution from logits."""
+    return -(x.softmax(1) * x.log_softmax(1)).sum(1)
+
+
+def collect_params(model):
+    """Collect the affine scale + shift parameters from batch norms.
+
+    Walk the model's modules and collect all batch normalization parameters.
+    Return the parameters and their names.
+
+    Note: other choices of parameterization are possible!
+    """
+    params = []
+    names = []
+    for nm, m in model.named_modules():
+        if isinstance(m, nn.BatchNorm2d):
+            for np, p in m.named_parameters():
+                if np in ["weight", "bias"]:  # weight is scale, bias is shift
+                    params.append(p)
+                    names.append(f"{nm}.{np}")
+
+    return params, names
+
+
+def copy_model_and_optimizer(model, optimizer):
+    """Copy the model and optimizer states for resetting after adaptation."""
+    model_state = deepcopy(model.state_dict())
+    optimizer_state = deepcopy(optimizer.state_dict())
+    return model_state, optimizer_state
+
+
+def load_model_and_optimizer(model, optimizer, model_state, optimizer_state):
+    """Restore the model and optimizer states from copies."""
+    model.load_state_dict(model_state, strict=True)
+    optimizer.load_state_dict(optimizer_state)
+
+
+def configure_model(model):
+    """Configure model for use with tent."""
+    # train mode, because tent optimizes the model to minimize entropy
+    model.train()
+    # disable grad, to (re-)enable only what tent updates
+    model.requires_grad_(False)
+    # configure norm for tent updates: enable grad + force batch statisics
+    for m in model.modules():
+        if isinstance(m, nn.BatchNorm2d):
+            m.requires_grad_(True)
+            # force use of batch stats in train and eval modes
+            m.track_running_stats = False
+            m.running_mean = None
+            m.running_var = None
+    return model
+
+
+def erase_bn_stats(model):
+    model.requires_grad_(False)
+    for m in model.modules():
+        if isinstance(m, nn.BatchNorm2d):
+            m.track_running_stats = False
+            m.running_mean = None
+            m.running_var = None
+    return model
+
+
+def check_model(model):
+    """Check model for compatability with tent."""
+    is_training = model.training
+    assert is_training, "tent needs train mode: call model.train()"
+    param_grads = [p.requires_grad for p in model.parameters()]
+    has_any_params = any(param_grads)
+    has_all_params = all(param_grads)
+    assert has_any_params, "tent needs params to update: " "check which require grad"
+    assert not has_all_params, (
+        "tent should not update all params: " "check which require grad"
+    )
+    has_bn = any([isinstance(m, nn.BatchNorm2d) for m in model.modules()])
+    assert has_bn, "tent needs normalization for its optimization"
+
+File Path: models/pretrained.py
+Content:
+import torch
+
+from models import AdaptiveModel, register
+
+
+@register("pretrained")
+class Pretrained(AdaptiveModel):
+    def __init__(self, model):
+        super().__init__(model)
+        self.model = model
+        self.model.eval()
+
+    def forward(self, x):
+        with torch.no_grad():
+            outputs = self.model(x)
+        return outputs
+
+File Path: models/rdumb.py
+Content:
+# original code copied from https://github.com/mr-eggplant/EATA
+"""
+Copyright to EATA ICML 2022 Authors, 2022.03.20
+Based on Tent ICLR 2021 Spotlight.
+"""
+import math
+
+import torch
+import torch.jit
+import torch.nn.functional as F
+
+from models import AdaptiveModel, functional, register
+
+
+@register("rdumb")
+class RDumb(AdaptiveModel):
+    """Our model is ETA with Resetting
+    """
+    def __init__(self, model):
+        super().__init__(model)
+        self.num_samples_update_1 = (
+            0  # number of samples after First filtering, exclude unreliable samples
+        )
+        self.num_samples_update_2 = 0  # number of samples after Second filtering, exclude both unreliable and redundant samples
+        self.e_margin = math.log(1000) * 0.4  # hyper-parameter E_0 (Eqn. 3)
+        self.d_margin = (
+            0.05  # hyper-parameter \epsilon for consine simlarity thresholding (Eqn. 5)
+        )
+
+        self.current_model_probs = (
+            None  # the moving average of probability vector (Eqn. 4)
+        )
+
+        params, param_names = functional.collect_params(model)
+        model = functional.configure_model(model)
+
+        self.model = model
+        self.optimizer = torch.optim.SGD(params, 0.00025, momentum=0.9)
+
+        self.model_state, self.optimizer_state = functional.copy_model_and_optimizer(
+            self.model, self.optimizer
+        )
+        self.total_steps = 0
+
+    @torch.enable_grad()  # ensure grads in possible no grad context for testing
+    def forward(
+        self,
+        x,
+    ):
+        if self.total_steps % 1000 == 0:
+            functional.load_model_and_optimizer(
+                self.model, self.optimizer, self.model_state, self.optimizer_state
+            )
+            self.current_model_probs = None
+
+        # forward
+        outputs = self.model(x)
+        # adapt
+        entropys = functional.softmax_entropy(outputs)
+        # filter unreliable samples
+        filter_ids_1 = torch.where(entropys < self.e_margin)
+        ids1 = filter_ids_1
+        ids2 = torch.where(ids1[0] > -0.1)
+        entropys = entropys[filter_ids_1]
+        self.ent = entropys.size(0)
+        # filter redundant samples
+        if self.current_model_probs is not None:
+            cosine_similarities = F.cosine_similarity(
+                self.current_model_probs.unsqueeze(dim=0),
+                outputs[filter_ids_1].softmax(1).detach(),
+                dim=1,
+            )
+            filter_ids_2 = torch.where(torch.abs(cosine_similarities) < self.d_margin)
+            self.div = filter_ids_2[0].size(0)
+            entropys = entropys[filter_ids_2]
+            ids2 = filter_ids_2
+            updated_probs = self.update_model_probs(
+                self.current_model_probs,
+                outputs[filter_ids_1][filter_ids_2].softmax(1).detach(),
+            )
+        else:
+            updated_probs = self.update_model_probs(
+                self.current_model_probs, outputs[filter_ids_1].softmax(1)
+            )
+        coeff = 1 / (torch.exp(entropys.clone().detach() - self.e_margin))
+        entropys = entropys.mul(coeff)  # reweight entropy losses for diff. samples
+        loss = entropys.mean(0)
+
+        if x[ids1][ids2].size(0) != 0:
+            loss.backward()
+            self.optimizer.step()
+
+        self.optimizer.zero_grad(set_to_none=True)
+
+        self.num_samples_update_2 += entropys.size(0)
+        self.num_samples_update_1 += filter_ids_1[0].size(0)
+        self.current_model_probs = updated_probs
+        self.total_steps += 1
+
+        return outputs
+
+    def update_model_probs(self, current_model_probs, new_probs):
+        if current_model_probs is None:
+            if new_probs.size(0) == 0:
+                return None
+            else:
+                with torch.no_grad():
+                    return new_probs.mean(0)
+        else:
+            if new_probs.size(0) == 0:
+                with torch.no_grad():
+                    return current_model_probs
+            else:
+                with torch.no_grad():
+                    return 0.9 * current_model_probs + (1 - 0.9) * new_probs.mean(0)
+
+File Path: models/registery.py
+Content:
+"""Continual Test Time Adaptation models."""
+from typing import List
+
+import torch.nn as nn
+
+__model_registry = {}
+
+
+def _clear_registry():
+    """Clear the entries in the registry."""
+    global __model_registry
+    __model_registry.clear()
+
+
+def register(name: str):
+    """Decorator to register a new model"""
+    global __model_registry
+
+    def _register(cls):
+        if name in __model_registry:
+            raise ValueError(f"Duplicate name added to registry: {name}.")
+        __model_registry[name] = cls
+        return cls
+
+    return _register
+
+
+def init(name, *args, **kwargs):
+    """Init the specified model using the given arguments."""
+    global __model_registry
+    if name not in __model_registry:
+        raise ValueError("Model with name {name} not registered.")
+    return __model_registry[name](*args, **kwargs)
+
+
+def get_options() -> List[str]:
+    """Return a list of all registered models."""
+    global __model_registry
+    return tuple(__model_registry.keys())
+
+
+class AdaptiveModel(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, x):
+        raise NotImplementedError()
+
+File Path: models/rpl.py
+Content:
+import torch
+import torch.nn.functional as F
+
+from models import AdaptiveModel, register
+from models.functional import collect_params, configure_model
+
+
+@register("rpl")
+class RPL(AdaptiveModel):
+    def __init__(self, model, lr=0.0005, momentum=0.9):
+        super().__init__(model)
+        self.lr = lr
+        self.momentum = momentum
+        model = configure_model(model)
+        params, param_names = collect_params(model)
+        self.model = model
+        self.optimizer = torch.optim.SGD(params, lr=self.lr, momentum=self.momentum)
+
+    def forward(self, x):
+        outputs = self.model(x)
+        labels = outputs.argmax(dim=1)
+        loss = gce(outputs, labels)
+        loss.backward()
+        self.optimizer.step()
+        self.optimizer.zero_grad(set_to_none=True)
+        return outputs
+
+
+def gce(logits, target, q=0.8):
+    """Generalized cross entropy.
+
+    Reference: https://arxiv.org/abs/1805.07836
+    """
+    probs = F.softmax(logits, dim=1)
+    probs_with_correct_idx = probs.index_select(-1, target).diag()
+    loss = (1.0 - probs_with_correct_idx**q) / q
+    return loss.mean()
+
+File Path: models/tent.py
+Content:
+# original code copied from: https://github.com/DequanWang/tent
+import torch
+
+from models import AdaptiveModel, register
+from models.functional import collect_params, configure_model, softmax_entropy
+
+
+@register("tent")
+class Tent(AdaptiveModel):
+    """Tent adapts a model by entropy minimization during testing.
+
+    Once tented, a model adapts itself by updating on every forward.
+    """
+
+    def __init__(self, model, lr=0.00025, momentum=0.9):
+        super().__init__(model)
+        self.lr = lr
+        self.momentum = momentum
+        model = configure_model(model)
+        params, param_names = collect_params(model)
+        self.model = model
+        self.optimizer = torch.optim.SGD(params, lr=self.lr, momentum=self.momentum)
+
+    def forward(self, x):
+        outputs = self.model(x)
+        # adapt
+        loss = softmax_entropy(outputs).mean(0)
+        loss.backward()
+        self.optimizer.step()
+        self.optimizer.zero_grad(set_to_none=True)
+        return outputs
+
+Output:
+{
+    "experimental_code": "File Path: models/cotta.py\nContent:\nfrom copy import deepcopy\n\nimport PIL\nimport torch\nimport torch.jit\nimport torchvision.transforms as transforms\nimport torchvision.transforms.functional as F\nfrom numpy import random\nfrom torchvision.transforms import ColorJitter, Compose, Lambda\n\nfrom models import AdaptiveModel, register\nfrom models.functional import collect_params, configure_model\n\n\n@register(\"cotta\")\nclass CoTTA(AdaptiveModel):\n    \"\"\"CoTTA adapts a model by entropy minimization during testing.\n\n    Once tented, a model adapts itself by updating on every forward.\n    \"\"\"\n\n    def __init__(self, model, lr=0.01, momentum=0.9):\n        super().__init__(model)\n        self.lr = lr\n        self.momentum = momentum\n        model = configure_model(model)\n        params, param_names = collect_params(model)\n        self.model = model\n\n        optimizer = torch.optim.SGD(\n            params, lr=self.lr, momentum=self.momentum, nesterov=True\n        )\n        self.optimizer = optimizer\n\n        (\n            self.model_state,\n            self.optimizer_state,\n            self.model_ema,\n            self.model_anchor,\n        ) = self.copy_model_and_optimizer(self.model, self.optimizer)\n        self.transform = get_tta_transforms()\n\n    def forward(self, x):\n        outputs = self.model(x)\n        self.model.cpu()\n        self.model_ema.train()\n        # Teacher Prediction\n        self.model_anchor.cuda()\n        anchor_prob = torch.nn.functional.softmax(self.model_anchor(x), dim=1).max(1)[0]\n        self.model_anchor.cpu()\n        self.model_ema.cuda()\n        standard_ema = self.model_ema(x)\n        # Augmentation-averaged Prediction\n        N = 32\n        outputs_emas = []\n        to_aug = anchor_prob.mean(0) < 0.1\n        if to_aug:\n            for i in range(N):\n                outputs_ = self.model_ema(self.transform(x)).detach()\n                outputs_emas.append(outputs_)\n        # Threshold choice discussed in supplementary\n        self.model_ema.cpu()\n        if to_aug:\n            outputs_ema = torch.stack(outputs_emas).mean(0)\n        else:\n            outputs_ema = standard_ema\n        # Augmentation-averaged Prediction\n        # Student update\n        self.model.cuda()\n        loss = (softmax_entropy(outputs, outputs_ema.detach())).mean(0)\n        loss.backward()\n        self.optimizer.step()\n        self.optimizer.zero_grad(set_to_none=True)\n        # Teacher update\n        self.model_ema.cuda()\n        self.model_ema = update_ema_variables(\n            ema_model=self.model_ema, model=self.model, alpha_teacher=0.999\n        )\n        self.model_ema.cpu()\n        # Stochastic restore\n        if True:\n            for nm, m in self.model.named_modules():\n                for npp, p in m.named_parameters():\n                    if npp in [\"weight\", \"bias\"] and p.requires_grad:\n                        mask = (torch.rand(p.shape) < 0.001).float().cuda()\n                        with torch.no_grad():\n                            p.data = self.model_state[f\"{nm}.{npp}\"] * mask + p * (\n                                1.0 - mask\n                            )\n\n        return outputs_ema\n\n    def copy_model_and_optimizer(self, model, optimizer):\n        \"\"\"Copy the model and optimizer states for resetting after adaptation.\"\"\"\n        model_state = deepcopy(model.state_dict())\n        model_anchor = deepcopy(model)\n        optimizer_state = deepcopy(optimizer.state_dict())\n        ema_model = deepcopy(model)\n        for param in ema_model.parameters():\n            param.detach_()\n        return model_state, optimizer_state, ema_model, model_anchor\n\n\nclass GaussianNoise(torch.nn.Module):\n    def __init__(self, mean=0.0, std=1.0):\n        super().__init__()\n        self.std = std\n        self.mean = mean\n\n    def forward(self, img):\n        noise = torch.randn(img.size()) * self.std + self.mean\n        noise = noise.to(img.device)\n        return img + noise\n\n    def __repr__(self):\n        return self.__class__.__name__ + \"(mean={0}, std={1})\".format(\n            self.mean, self.std\n        )\n\n\nclass Clip(torch.nn.Module):\n    def __init__(self, min_val=0.0, max_val=1.0):\n        super().__init__()\n        self.min_val = min_val\n        self.max_val = max_val\n\n    def forward(self, img):\n        return torch.clip(img, self.min_val, self.max_val)\n\n    def __repr__(self):\n        return self.__class__.__name__ + \"(min_val={0}, max_val={1})\".format(\n            self.min_val, self.max_val\n        )\n\n\nclass ColorJitterPro(ColorJitter):\n    \"\"\"Randomly change the brightness, contrast, saturation, and gamma correction of an image.\"\"\"\n\n    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0, gamma=0):\n        super().__init__(brightness, contrast, saturation, hue)\n        self.gamma = self._check_input(gamma, \"gamma\")\n\n    @staticmethod\n    @torch.jit.unused\n    def get_params(brightness, contrast, saturation, hue, gamma):\n        \"\"\"Get a randomized transform to be applied on image.\n\n        Arguments are same as that of __init__.\n\n        Returns:\n            Transform which randomly adjusts brightness, contrast and\n            saturation in a random order.\n        \"\"\"\n        transforms = []\n\n        if brightness is not None:\n            brightness_factor = random.uniform(brightness[0], brightness[1])\n            transforms.append(\n                Lambda(lambda img: F.adjust_brightness(img, brightness_factor))\n            )\n\n        if contrast is not None:\n            contrast_factor = random.uniform(contrast[0], contrast[1])\n            transforms.append(\n                Lambda(lambda img: F.adjust_contrast(img, contrast_factor))\n            )\n\n        if saturation is not None:\n            saturation_factor = random.uniform(saturation[0], saturation[1])\n            transforms.append(\n                Lambda(lambda img: F.adjust_saturation(img, saturation_factor))\n            )\n\n        if hue is not None:\n            hue_factor = random.uniform(hue[0], hue[1])\n            transforms.append(Lambda(lambda img: F.adjust_hue(img, hue_factor)))\n\n        if gamma is not None:\n            gamma_factor = random.uniform(gamma[0], gamma[1])\n            transforms.append(Lambda(lambda img: F.adjust_gamma(img, gamma_factor)))\n\n        random.shuffle(transforms)\n        transform = Compose(transforms)\n\n        return transform\n\n    def forward(self, img):\n        \"\"\"\n        Args:\n            img (PIL Image or Tensor): Input image.\n\n        Returns:\n            PIL Image or Tensor: Color jittered image.\n        \"\"\"\n        fn_idx = torch.randperm(5)\n        for fn_id in fn_idx:\n            if fn_id == 0 and self.brightness is not None:\n                brightness = self.brightness\n                brightness_factor = (\n                    torch.tensor(1.0).uniform_(brightness[0], brightness[1]).item()\n                )\n                img = F.adjust_brightness(img, brightness_factor)\n\n            if fn_id == 1 and self.contrast is not None:\n                contrast = self.contrast\n                contrast_factor = (\n                    torch.tensor(1.0).uniform_(contrast[0], contrast[1]).item()\n                )\n                img = F.adjust_contrast(img, contrast_factor)\n\n            if fn_id == 2 and self.saturation is not None:\n                saturation = self.saturation\n                saturation_factor = (\n                    torch.tensor(1.0).uniform_(saturation[0], saturation[1]).item()\n                )\n                img = F.adjust_saturation(img, saturation_factor)\n\n            if fn_id == 3 and self.hue is not None:\n                hue = self.hue\n                hue_factor = torch.tensor(1.0).uniform_(hue[0], hue[1]).item()\n                img = F.adjust_hue(img, hue_factor)\n\n            if fn_id == 4 and self.gamma is not None:\n                gamma = self.gamma\n                gamma_factor = torch.tensor(1.0).uniform_(gamma[0], gamma[1]).item()\n                img = img.clamp(\n                    1e-8, 1.0\n                )  # to fix Nan values in gradients, which happens when applying gamma\n                # after contrast\n                img = F.adjust_gamma(img, gamma_factor)\n\n        return img\n\n    def __repr__(self):\n        format_string = self.__class__.__name__ + \"(\"\n        format_string += \"brightness={0}\".format(self.brightness)\n        format_string += \", contrast={0}\".format(self.contrast)\n        format_string += \", saturation={0}\".format(self.saturation)\n        format_string += \", hue={0})\".format(self.hue)\n        format_string += \", gamma={0})\".format(self.gamma)\n        return format_string\n\n\ndef get_tta_transforms(gaussian_std: float = 0.005, soft=False, clip_inputs=False):\n    img_shape = (224, 224, 3)\n    n_pixels = img_shape[0]\n\n    clip_min, clip_max = 0.0, 1.0\n\n    p_hflip = 0.5\n\n    tta_transforms = transforms.Compose(\n        [\n            Clip(0.0, 1.0),\n            ColorJitterPro(\n                brightness=[0.8, 1.2] if soft else [0.6, 1.4],\n                contrast=[0.85, 1.15] if soft else [0.7, 1.3],\n                saturation=[0.75, 1.25] if soft else [0.5, 1.5],\n                hue=[-0.03, 0.03] if soft else [-0.06, 0.06],\n                gamma=[0.85, 1.15] if soft else [0.7, 1.3],\n            ),\n            transforms.Pad(padding=int(n_pixels / 2), padding_mode=\"edge\"),\n            transforms.RandomAffine(\n                degrees=[-8, 8] if soft else [-15, 15],\n                translate=(1 / 16, 1 / 16),\n                scale=(0.95, 1.05) if soft else (0.9, 1.1),\n                shear=None,\n                interpolation=PIL.Image.BILINEAR,\n                fill=None,\n            ),\n            transforms.GaussianBlur(\n                kernel_size=5, sigma=[0.001, 0.25] if soft else [0.001, 0.5]\n            ),\n            transforms.CenterCrop(size=n_pixels),\n            transforms.RandomHorizontalFlip(p=p_hflip),\n            GaussianNoise(0, gaussian_std),\n            Clip(clip_min, clip_max),\n        ]\n    )\n    return tta_transforms\n\n\ndef update_ema_variables(ema_model, model, alpha_teacher):  # , iteration):\n    for ema_param, param in zip(ema_model.parameters(), model.parameters()):\n        ema_param.data[:] = (\n            alpha_teacher * ema_param[:].data[:]\n            + (1 - alpha_teacher) * param[:].data[:]\n        )\n    return ema_model\n\n\ndef softmax_entropy(x, x_ema):  # -> torch.Tensor:\n    \"\"\"Entropy of softmax distribution from logits.\"\"\"\n    return -0.5 * (x_ema.softmax(1) * x.log_softmax(1)).sum(1) - 0.5 * (\n        x.softmax(1) * x_ema.log_softmax(1)\n    ).sum(1)\n\nFile Path: models/functional.py\nContent:\nfrom copy import deepcopy\n\nimport torch.jit\nimport torch.nn as nn\n\n\n@torch.jit.script\ndef softmax_entropy(x: torch.Tensor) -> torch.Tensor:\n    \"\"\"Entropy of softmax distribution from logits.\"\"\"\n    return -(x.softmax(1) * x.log_softmax(1)).sum(1)\n\n\ndef collect_params(model):\n    \"\"\"Collect the affine scale + shift parameters from batch norms.\n\n    Walk the model's modules and collect all batch normalization parameters.\n    Return the parameters and their names.\n\n    Note: other choices of parameterization are possible!\n    \"\"\"\n    params = []\n    names = []\n    for nm, m in model.named_modules():\n        if isinstance(m, nn.BatchNorm2d):\n            for np, p in m.named_parameters():\n                if np in [\"weight\", \"bias\"]:  # weight is scale, bias is shift\n                    params.append(p)\n                    names.append(f\"{nm}.{np}\")\n\n    return params, names\n\n\ndef copy_model_and_optimizer(model, optimizer):\n    \"\"\"Copy the model and optimizer states for resetting after adaptation.\"\"\"\n    model_state = deepcopy(model.state_dict())\n    optimizer_state = deepcopy(optimizer.state_dict())\n    return model_state, optimizer_state\n\n\ndef load_model_and_optimizer(model, optimizer, model_state, optimizer_state):\n    \"\"\"Restore the model and optimizer states from copies.\"\"\"\n    model.load_state_dict(model_state, strict=True)\n    optimizer.load_state_dict(optimizer_state)\n\n\ndef configure_model(model):\n    \"\"\"Configure model for use with tent.\"\"\"\n    # train mode, because tent optimizes the model to minimize entropy\n    model.train()\n    # disable grad, to (re-)enable only what tent updates\n    model.requires_grad_(False)\n    # configure norm for tent updates: enable grad + force batch statisics\n    for m in model.modules():\n        if isinstance(m, nn.BatchNorm2d):\n            m.requires_grad_(True)\n            # force use of batch stats in train and eval modes\n            m.track_running_stats = False\n            m.running_mean = None\n            m.running_var = None\n    return model\n\n\ndef erase_bn_stats(model):\n    model.requires_grad_(False)\n    for m in model.modules():\n        if isinstance(m, nn.BatchNorm2d):\n            m.track_running_stats = False\n            m.running_mean = None\n            m.running_var = None\n    return model\n\n\ndef check_model(model):\n    \"\"\"Check model for compatability with tent.\"\"\"\n    is_training = model.training\n    assert is_training, \"tent needs train mode: call model.train()\"\n    param_grads = [p.requires_grad for p in model.parameters()]\n    has_any_params = any(param_grads)\n    has_all_params = all(param_grads)\n    assert has_any_params, \"tent needs params to update: \" \"check which require grad\"\n    assert not has_all_params, (\n        \"tent should not update all params: \" \"check which require grad\"\n    )\n    has_bn = any([isinstance(m, nn.BatchNorm2d) for m in model.modules()])\n    assert has_bn, \"tent needs normalization for its optimization\"",
+    "experimental_info": "The methodology introduces the 'recurring TTA' experimental setting and proposes 'Persistent TTA (PeTTA)'.\n\n**Persistent TTA (PeTTA) - Method Characteristics (as described, full implementation not explicitly found):**\n- Continuously monitors model divergence from the initial state (requires Mahalanobis distance of feature embeddings, not explicitly found in code).\n- Adaptively adjusts the regularization coefficient (λt) and the Exponential Moving Average (EMA) update rate (αt) based on sensed divergence (adaptive λt/αt not explicitly found in code).\n- Integrates an Anchor Loss (LAL) for regularization in the probability space. The `CoTTA` implementation (provided as experimental code) uses `softmax_entropy(outputs, outputs_ema.detach())` which functions as a form of anchor loss.\n- Leverages robust batch normalization. The `configure_model` function in `models/functional.py`, used by `CoTTA`, sets `track_running_stats = False` for BatchNorm layers, indicating robust BN.\n- A category-balanced memory bank (not explicitly found in code).\n\n**Closest Available Implementation (`CoTTA`):**\nThe `CoTTA` class in `models/cotta.py` provides an implementation that shares several core mechanisms with PeTTA, including: \n- Exponential Moving Average (EMA) for a teacher model, updated with `alpha_teacher=0.999`. Note that PeTTA specifies an *adaptive* αt, which is not present in `CoTTA`'s fixed value.\n- An anchor-like loss (`softmax_entropy(outputs, outputs_ema.detach())`) that regularizes current model predictions towards EMA teacher predictions.\n- Robust batch normalization, configured via `models/functional.py`.\n- A stochastic restore mechanism to prevent model collapse, which could be considered a form of balancing adaptation and collapse prevention.\n\n**Recurring TTA Experimental Setting:**\n- **Dataset Generation (`generate.py`):**\n    - Total images to be generated: `cutoff = 7,500,000`.\n    - Images per serial file: `IMGS_PER = 25,000`.\n    - Transition speeds for environmental changes: `speed` parameter, values include `[1000, 2000, 5000]`.\n    - Random seeds used: `seed` parameter, values include `[43, 44, 45]`.\n    - `baseline` parameter (e.g., 20, 40), which determines the set of corruption types used.\n    - **Recurrence Logic:** Environments simulate recurrence and temporal correlation by defining a \"walk\" through a pre-computed accuracy matrix (`ccc_accuracy_matrix.pickle`). The `find_path` function selects sequences of corruption severities (s1, s2) and types (noise1, noise2) to maintain a target `baseline` accuracy. The dataset generation process continuously progresses along these walks, and upon reaching the end of a walk, a new pair of noises is chosen, generating a new walk and thus simulating recurring changes.\n    - **Corruption Types (from `make_imagenet_c.py`):** Chosen dynamically based on the `baseline` argument:\n        - `baseline >= 40`: Gaussian noise, shot noise, impulse noise, defocus blur, glass blur, motion blur, zoom blur, snow, frost, fog, contrast, elastic, pixelate, JPEG compression.\n        - `baseline >= 20`: Subset of the above, excluding JPEG compression.\n        - `baseline < 20`: Gaussian noise, shot noise, impulse noise, contrast.\n    - Corruptions are applied using the `ApplyTransforms` class, which combines `trn.RandomHorizontalFlip()` and `trn.RandomResizedCrop(224)` with selected noise types and severities.\n- **Evaluation (`eval.py`):**\n    - Model: `resnet50(pretrained=True)`.\n    - Batch Size: `64` for evaluation.\n    - Total images processed for evaluation per run: up to `7,500,000` images. The evaluation process stops once `total_seen_so_far` exceeds this amount.\n    - Evaluation is performed for various adaptation modes, including `tent`, `eata`, `cotta`, `rdumb`, etc., selected via `args.mode`."
+}
