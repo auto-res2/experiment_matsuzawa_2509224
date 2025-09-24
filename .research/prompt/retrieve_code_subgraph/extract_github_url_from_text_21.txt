@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+The methodology involves a theoretical analysis of Deploy mode, identifying that inverse scaling coefficients between convolutional weights and their gradients cause training instability. To address this, the proposed Tune mode dynamically calculates transformed convolutional parameters (weights and biases) on-the-fly. This approach leverages the associative law of convolution and affine transformations, ensuring functional equivalence with Eval mode in both forward and backward propagation, thereby maintaining training stability. For efficiency, Tune mode reduces memory by only needing to store the input feature map (X) and transformed convolutional weights (ω'), instead of X and the larger convolutional output (Y) required by Eval mode. Computationally, applying affine transformations to the smaller convolutional weights is faster than applying them to large feature maps. The method is implemented as a drop-in replacement for Eval mode and integrates with machine learning compilers like PyTorch for automatic optimization.
+
+# GitHub URLs List
+['https://github.com/facebookresearch/detectron2']
+Output:
+{
+    "index": 0
+}
