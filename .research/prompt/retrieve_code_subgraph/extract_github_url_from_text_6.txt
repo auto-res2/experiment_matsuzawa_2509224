@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+The methodology introduces the 'recurring TTA' setting, which extends practical TTA by simulating environments that not only change but also recur over time (K times) and feature temporally correlated category distributions. A theoretical analysis is conducted on an ϵ-perturbed binary Gaussian Mixture Model Classifier (ϵ-GMMC) to understand model collapse by simulating an increasing false negative rate (ϵt). Based on these insights, the paper proposes Persistent TTA (PeTTA), which continuously monitors model divergence from the initial state using the Mahalanobis distance of feature embeddings. PeTTA adaptively adjusts the regularization coefficient (λt) and the Exponential Moving Average (EMA) update rate (αt) based on the sensed divergence, balancing adaptation and collapse prevention. It also integrates an Anchor Loss (LAL) for regularization in the probability space and leverages robust batch normalization and a category-balanced memory bank inspired by previous work.
+
+# GitHub URLs List
+['https://github.com/oripress/CCC', 'https://github.com/DianCh/AdaContrast', 'https://github.com/BIT-DA/RoTTA', 'https://github.com/mariodoebler/test-time-adaptation', 'https://github.com/hendrycks/robustness']
+Output:
+{
+    "index": 0
+}
