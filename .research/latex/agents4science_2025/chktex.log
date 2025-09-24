@@ -1,0 +1,138 @@
+Warning 2 in paper.tex line 49: Non-breaking space (`~') should have been used.
+Deep neural networks seldom encounter data that exactly follow their training distribution; adverse weather, sensor ageing or a new geographic region can destroy accuracy once a model is deployed. Test-time adaptation (TTA) therefore updates a model on-the-fly using only the incoming test stream. Early forward-only work, most notably Tent, which minimises prediction entropy by adjusting batch-normalisation (BN) affine parameters \cite{wang-2020-tent}, and self-supervised objectives that make adaptation feasible without labels \cite{sun-2019-test} confirmed that back-propagation is not strictly necessary. Nevertheless three practical constraints remain open. First, contemporary architectures expose learnable scale-shift parameters far beyond normalisation: ConvNeXt layer-scale, Vision Transformer (ViT) QKV scaling, residual re-weighting and explicit gains in norm-free networks. Restricting adaptation to BN leaves this capacity idle. Second, hyper-networks are commonly trained by replaying source images, a practice that conflicts with privacy legislation such as GDPR and prevents drop-in use for proprietary or unpublished datasets. Third, edge devices must respect strict and varying latency and energy budgets; an adaptor must decide how much extra computation it can afford per frame and must prevent catastrophic collapse when class marginals are highly skewed \cite{alfarra-2023-evaluation}.  
+                                                                                                                                                                                                                                                                                                                                                                                                                                                ^
+Warning 2 in paper.tex line 49: Non-breaking space (`~') should have been used.
+Deep neural networks seldom encounter data that exactly follow their training distribution; adverse weather, sensor ageing or a new geographic region can destroy accuracy once a model is deployed. Test-time adaptation (TTA) therefore updates a model on-the-fly using only the incoming test stream. Early forward-only work, most notably Tent, which minimises prediction entropy by adjusting batch-normalisation (BN) affine parameters \cite{wang-2020-tent}, and self-supervised objectives that make adaptation feasible without labels \cite{sun-2019-test} confirmed that back-propagation is not strictly necessary. Nevertheless three practical constraints remain open. First, contemporary architectures expose learnable scale-shift parameters far beyond normalisation: ConvNeXt layer-scale, Vision Transformer (ViT) QKV scaling, residual re-weighting and explicit gains in norm-free networks. Restricting adaptation to BN leaves this capacity idle. Second, hyper-networks are commonly trained by replaying source images, a practice that conflicts with privacy legislation such as GDPR and prevents drop-in use for proprietary or unpublished datasets. Third, edge devices must respect strict and varying latency and energy budgets; an adaptor must decide how much extra computation it can afford per frame and must prevent catastrophic collapse when class marginals are highly skewed \cite{alfarra-2023-evaluation}.  
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ^
+Warning 2 in paper.tex line 49: Non-breaking space (`~') should have been used.
+Deep neural networks seldom encounter data that exactly follow their training distribution; adverse weather, sensor ageing or a new geographic region can destroy accuracy once a model is deployed. Test-time adaptation (TTA) therefore updates a model on-the-fly using only the incoming test stream. Early forward-only work, most notably Tent, which minimises prediction entropy by adjusting batch-normalisation (BN) affine parameters \cite{wang-2020-tent}, and self-supervised objectives that make adaptation feasible without labels \cite{sun-2019-test} confirmed that back-propagation is not strictly necessary. Nevertheless three practical constraints remain open. First, contemporary architectures expose learnable scale-shift parameters far beyond normalisation: ConvNeXt layer-scale, Vision Transformer (ViT) QKV scaling, residual re-weighting and explicit gains in norm-free networks. Restricting adaptation to BN leaves this capacity idle. Second, hyper-networks are commonly trained by replaying source images, a practice that conflicts with privacy legislation such as GDPR and prevents drop-in use for proprietary or unpublished datasets. Third, edge devices must respect strict and varying latency and energy budgets; an adaptor must decide how much extra computation it can afford per frame and must prevent catastrophic collapse when class marginals are highly skewed \cite{alfarra-2023-evaluation}.  
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ^
+Warning 13 in paper.tex line 54: Intersentence spacing (`\@') should perhaps be used.
+At deployment the adaptor offers an explicit any-time compute knob. The non-linear mapping is approximated by the first $K$ Householder reflectors of its SVD; $K$ is chosen online so that measured latency never exceeds the system budget. To guarantee safety we derive a $\chi^2$ bound on the divergence between pre- and post-adapt logits; if the bound is exceeded the update is rolled back and a larger $K$ is attempted, keeping the probability of accuracy loss below $\varepsilon$. A 16-byte Welford estimator supplies long-term stability with zero per-sample memory.  
+                                                                                                                                                             ^
+Warning 2 in paper.tex line 70: Non-breaking space (`~') should have been used.
+Tent adapts BN affine parameters by minimising prediction entropy \cite{wang-2020-tent}. TTN interpolates running and batch statistics to cope with tiny batches \cite{lim-2023-ttn}, while UnMix-TNS combats temporal label correlation by mixing statistic components \cite{tomar-2024-mixing}. All three fail on norm-free backbones and leave transformer-specific scalings untouched. SAUNet treats every affine pair uniformly and therefore covers BN, LN, layer-scale and gain parameters.  
+                                                                 ^
+Warning 2 in paper.tex line 70: Non-breaking space (`~') should have been used.
+Tent adapts BN affine parameters by minimising prediction entropy \cite{wang-2020-tent}. TTN interpolates running and batch statistics to cope with tiny batches \cite{lim-2023-ttn}, while UnMix-TNS combats temporal label correlation by mixing statistic components \cite{tomar-2024-mixing}. All three fail on norm-free backbones and leave transformer-specific scalings untouched. SAUNet treats every affine pair uniformly and therefore covers BN, LN, layer-scale and gain parameters.  
+                                                                                                                                                                ^
+Warning 2 in paper.tex line 70: Non-breaking space (`~') should have been used.
+Tent adapts BN affine parameters by minimising prediction entropy \cite{wang-2020-tent}. TTN interpolates running and batch statistics to cope with tiny batches \cite{lim-2023-ttn}, while UnMix-TNS combats temporal label correlation by mixing statistic components \cite{tomar-2024-mixing}. All three fail on norm-free backbones and leave transformer-specific scalings untouched. SAUNet treats every affine pair uniformly and therefore covers BN, LN, layer-scale and gain parameters.  
+                                                                                                                                                                                                                                                                       ^
+Warning 2 in paper.tex line 73: Non-breaking space (`~') should have been used.
+Methods such as EATA, CoTTA and DELTA rely on back-propagation, where DELTA improves batch statistics via renormalisation and class re-weighting \cite{zhao-2023-delta}. Although effective, backward passes increase latency and power by orders of magnitude; the recent benchmark of Alfarra et al. shows that compute overhead can nullify accuracy gains under real-time budgets \cite{alfarra-2023-evaluation}. SAUNet is strictly forward-only.  
+                                                                                                                                                ^
+Warning 12 in paper.tex line 73: Interword spacing (`\ ') should perhaps be used.
+Methods such as EATA, CoTTA and DELTA rely on back-propagation, where DELTA improves batch statistics via renormalisation and class re-weighting \cite{zhao-2023-delta}. Although effective, backward passes increase latency and power by orders of magnitude; the recent benchmark of Alfarra et al. shows that compute overhead can nullify accuracy gains under real-time budgets \cite{alfarra-2023-evaluation}. SAUNet is strictly forward-only.  
+                                                                                                                                                                                                                                                                                                      ^
+Warning 2 in paper.tex line 73: Non-breaking space (`~') should have been used.
+Methods such as EATA, CoTTA and DELTA rely on back-propagation, where DELTA improves batch statistics via renormalisation and class re-weighting \cite{zhao-2023-delta}. Although effective, backward passes increase latency and power by orders of magnitude; the recent benchmark of Alfarra et al. shows that compute overhead can nullify accuracy gains under real-time budgets \cite{alfarra-2023-evaluation}. SAUNet is strictly forward-only.  
+                                                                                                                                                                                                                                                                                                                                                                                     ^
+Warning 2 in paper.tex line 76: Non-breaking space (`~') should have been used.
+UniTTA trains a hyper-network on source data but can only correct BN parameters \cite{yoo-2023-what}. LAME adapts logits instead of weights and thus avoids privacy issues, yet sacrifices internal capacity \cite{boudiaf-2022-parameter}. SAUNet meta-trains on synthetic noise, removes the data requirement and still operates on internal parameters.  
+                                                                               ^
+Warning 2 in paper.tex line 76: Non-breaking space (`~') should have been used.
+UniTTA trains a hyper-network on source data but can only correct BN parameters \cite{yoo-2023-what}. LAME adapts logits instead of weights and thus avoids privacy issues, yet sacrifices internal capacity \cite{boudiaf-2022-parameter}. SAUNet meta-trains on synthetic noise, removes the data requirement and still operates on internal parameters.  
+                                                                                                                                                                                                            ^
+Warning 2 in paper.tex line 79: Non-breaking space (`~') should have been used.
+PeTTA senses divergence via heuristics \cite{hoang-2023-persistent}; RoTTA combines robust statistics with a memory bank \cite{yuan-2023-robust}. SAUNet offers an analytical $\chi^2$ guard that needs no additional memory and enjoys a provable risk bound.  
+                                      ^
+Warning 2 in paper.tex line 79: Non-breaking space (`~') should have been used.
+PeTTA senses divergence via heuristics \cite{hoang-2023-persistent}; RoTTA combines robust statistics with a memory bank \cite{yuan-2023-robust}. SAUNet offers an analytical $\chi^2$ guard that needs no additional memory and enjoys a provable risk bound.  
+                                                                                                                        ^
+Warning 12 in paper.tex line 82: Interword spacing (`\ ') should perhaps be used.
+Alfarra et al. propose an evaluation protocol that penalises slow methods \cite{alfarra-2023-evaluation}, yet existing TTA techniques have no compute knob. SAUNet\'s Householder truncation is, to our knowledge, the first explicit latency control in a forward-only adaptor.  
+              ^
+Warning 2 in paper.tex line 82: Non-breaking space (`~') should have been used.
+Alfarra et al. propose an evaluation protocol that penalises slow methods \cite{alfarra-2023-evaluation}, yet existing TTA techniques have no compute knob. SAUNet\'s Householder truncation is, to our knowledge, the first explicit latency control in a forward-only adaptor.  
+                                                                         ^
+Warning 3 in paper.tex line 98: You should enclose the previous parenthesis with `{}'.
+Let $\ell$ and $\ell'$ denote logits before and after adaptation. The $\chi^2$ divergence $D_{\chi^2}(\ell'\Vert\ell) = \sum_i (\ell'_i - \ell_i)^2 / \ell_i$ upper-bounds the error increase under arbitrary label shift. A concentration inequality ensures $\mathbb{P} \leq \varepsilon$; threshold $\tau = 3$ keeps $\varepsilon \approx 0.01$ in practice.  
+                                                                                                                                                ^
+Warning 13 in paper.tex line 109: Intersentence spacing (`\@') should perhaps be used.
+The backbone is frozen. Each step draws a mini-batch of synthetic images, computes logits before ($p_0$) and after one SAUNet correction ($p_1$), and minimises the entropy difference $L = E$. Adam with learning rate $1 \times 10^{-3}$ and cosine decay over $25\,000$ steps converges in roughly two hours on a single A100 GPU.  
+                                                                                                                                                                                                                                                                                                                                    ^
+Warning 1 in paper.tex line 124: Command terminated with space.
+  \State \textbf{Input:} Frozen backbone $f_0$, SAUNet parameters $\theta$, optimiser, steps $S$  
+        ^
+Warning 1 in paper.tex line 126: Command terminated with space.
+    \State Sample mini-batch of synthetic images $X$ (frequency-matched Gaussian + RandAugment)  
+          ^
+Warning 1 in paper.tex line 127: Command terminated with space.
+    \State Compute logits before adaptation: $\ell \leftarrow f_0(X)$  
+          ^
+Warning 1 in paper.tex line 128: Command terminated with space.
+    \State Compute per-layer statistics $s$ and SAUNet corrections $(\Delta w, \Delta b) \leftarrow h_{\theta}(s)$  
+          ^
+Warning 1 in paper.tex line 129: Command terminated with space.
+    \State Apply one forward correction to obtain adapted logits $\ell'$  
+          ^
+Warning 1 in paper.tex line 130: Command terminated with space.
+    \State Compute loss $L \leftarrow E$ \Comment{Entropy difference proxy}  
+          ^
+Warning 1 in paper.tex line 131: Command terminated with space.
+    \State Update $\theta$ with Adam step on $\nabla_{\theta} L$  
+          ^
+Warning 1 in paper.tex line 132: Command terminated with space.
+  \EndFor  
+         ^
+Warning 1 in paper.tex line 139: Command terminated with space.
+  \State \textbf{Input:} Budget $B_t$, initial $K$, threshold $\tau$  
+        ^
+Warning 1 in paper.tex line 140: Command terminated with space.
+  \State Measure base latency; choose smallest $K$ such that total latency $\leq B_t$  
+        ^
+Warning 1 in paper.tex line 141: Command terminated with space.
+  \State Obtain pre-adaptation logits $\ell$  
+        ^
+Warning 1 in paper.tex line 142: Command terminated with space.
+  \State Apply SAUNet with Householder-$K$ approximation to get $\ell'$  
+        ^
+Warning 1 in paper.tex line 143: Command terminated with space.
+  \State Compute $d \leftarrow D_{\chi^2}(\ell'\Vert\ell)$  
+        ^
+Warning 1 in paper.tex line 145: Command terminated with space.
+    \State Roll back update; set $K \leftarrow 2K$ and re-apply  
+          ^
+Warning 1 in paper.tex line 147: Command terminated with space.
+      \State Discard update and use $\ell$ for prediction  
+            ^
+Warning 1 in paper.tex line 148: Command terminated with space.
+    \Else  
+         ^
+Warning 1 in paper.tex line 149: Command terminated with space.
+      \State Accept $\ell''$  
+            ^
+Warning 1 in paper.tex line 150: Command terminated with space.
+    \EndIf  
+          ^
+Warning 1 in paper.tex line 151: Command terminated with space.
+  \Else  
+       ^
+Warning 1 in paper.tex line 152: Command terminated with space.
+    \State Accept $\ell'$  
+          ^
+Warning 1 in paper.tex line 153: Command terminated with space.
+  \EndIf  
+        ^
+Warning 8 in paper.tex line 159: Wrong length of dash may have been used.
+All full-scale experiments run on a single NVIDIA A100-80 GB with CUDA 12.2 and PyTorch 2.1; automatic mixed precision uses bfloat16. INT8 kernels reuse the backbone GEMM engine. Three random seeds \{17, 42, 94\} are used throughout.  
+                                                      ^
+Warning 2 in paper.tex line 165: Non-breaking space (`~') should have been used.
+Source (frozen), BN-stat, TTN \cite{lim-2023-ttn}, UnMix-TNS \cite{tomar-2024-mixing}, Tent \cite{wang-2020-tent}, EATA, CoTTA, UniTTA-0G.  
+                             ^
+Warning 2 in paper.tex line 165: Non-breaking space (`~') should have been used.
+Source (frozen), BN-stat, TTN \cite{lim-2023-ttn}, UnMix-TNS \cite{tomar-2024-mixing}, Tent \cite{wang-2020-tent}, EATA, CoTTA, UniTTA-0G.  
+                                                            ^
+Warning 2 in paper.tex line 165: Non-breaking space (`~') should have been used.
+Source (frozen), BN-stat, TTN \cite{lim-2023-ttn}, UnMix-TNS \cite{tomar-2024-mixing}, Tent \cite{wang-2020-tent}, EATA, CoTTA, UniTTA-0G.  
+                                                                                           ^
+Warning 1 in paper.tex line 168: Command terminated with space.
+ImageNet-C v1.1 (15 corruptions \times 5 severities), Tiny-ImageNet-C, ImageNet-V2, ImageNet-A and DomainNet (Real $\to$ Clipart/Sketch). Static batch size 64; $\chi^2$ guard disabled. Hyper-network rank $r \in \{4, 8, 16\}$; $r = 8$ selected on Tiny-ImageNet-C severity 3.  
+                                      ^
+Warning 13 in paper.tex line 171: Intersentence spacing (`\@') should perhaps be used.
+ConvNeXt-T and ViT-S meta-trained under (A) synthetic noise only and (B) 10 \% ImageNet-1K. Evaluated on Ego4D object classification and ImageNet-C severity 3. Privacy leakage is quantified via the Yeom membership-inference attack; we report AUROC.  
+                                                                                                                                                                                                                                                       ^
+Warning 8 in paper.tex line 181: Wrong length of dash may have been used.
+SAUNet lowers ConvNeXt-T error on ImageNet-C from 47.5 \% to 37.8 \%, ViT-S from 46.1 \% to 38.4 \% and NF-ResNet-50 from 63.2 \% to 51.0 \%. Across the $15 \times 5$ corruption grid SAUNet wins 82 \% of the cells against the best competing baseline. Throughput ratio $C(g) = 1.02 \pm 0.02$ and FLOP overhead 1.5 \% confirm negligible cost. Tiny-ImageNet-C shows similar 9-12 pp gains, while ImageNet-A accuracy rises from 51.9 \% (UniTTA-0G) to 56.7 \%.  
+                                                                                                                                                                                                                                                                                                                                                                                    ^
