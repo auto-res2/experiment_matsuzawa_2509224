@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+The ATTA setting is formally defined, where a pre-trained model continuously adapts to streaming, unlabeled test data from diverse domains. A budget is set for labeled test instances, selected actively by an oracle. The model's parameters are optimized by minimizing a combined cross-entropy loss on actively labeled data and an unsupervised loss on unlabeled data. Theoretical analysis, based on learning theory and H∆H-distance, provides generalization bounds and demonstrates how limited labeled data alleviates distribution shifts. Catastrophic Forgetting (CF) is mitigated through selective entropy minimization: low-entropy samples are pseudo-labeled by the frozen source-pretrained model (acting as 'source-like' data), while high-entropy samples are actively selected for labeling. The SimATTA algorithm implements this by partitioning incoming test samples into high and low entropy sets. Low-entropy samples are pseudo-labeled and combined with previously pseudo-labeled data. High-entropy samples are selected using an incremental clustering technique (weighted K-means) to identify and store representative 'anchors' that cover seen and new distributions, managing a cluster centroid budget. The model is then fine-tuned using both pseudo-labeled low-entropy samples and actively labeled high-entropy anchors, with weights balanced according to theoretical insights to optimize performance and combat CF.
+
+# GitHub URLs List
+['https://github.com/divelab/ATTA', 'https://github.com/DequanWang/tent', 'https://github.com/mr-eggplant/EATA', 'https://github.com/qinenergy/cotta', 'https://github.com/mr-eggplant/SAR', 'https://github.com/virajprabhu/CLUE']
+Output:
+{
+    "index": 0
+}
