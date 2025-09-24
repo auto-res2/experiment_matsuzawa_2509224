@@ -557,6 +557,68 @@
       }
     }
   ],
+  "reference_research_study_list": [
+    {
+      "title": "Ttaps: Test-time adaption by aligning prototypes using self-supervision."
+    },
+    {
+      "title": "Mt3: Meta test-time training for self- supervised test-time adaption."
+    },
+    {
+      "title": "Parameter-free online test-time adaptation."
+    },
+    {
+      "title": "A probabilistic frame- work for lifelong test-time adaptation."
+    },
+    {
+      "title": "Adaptformer: Adapting vision transformers for scalable visual recognition."
+    },
+    {
+      "title": "Stfar: Im- proving object detection robustness at test-time by self- training with feature alignment regularization."
+    },
+    {
+      "title": "Un- biased mean teacher for cross-domain object detection."
+    },
+    {
+      "title": "Vision meets robotics: The kitti dataset."
+    },
+    {
+      "title": "Physics-based rendering for improving robustness to rain."
+    },
+    {
+      "title": "Deep residual learning for image recognition."
+    },
+    {
+      "title": "Benchmarking neu- ral network robustness to common corruptions and perturba- tions."
+    },
+    {
+      "title": "Mecta: Memory-economic continual test-time model adaptation."
+    },
+    {
+      "title": "Lora: Low-rank adaptation of large language models."
+    },
+    {
+      "title": "Batch normalization: Accelerating deep network training by reducing internal co- variate shift."
+    },
+    {
+      "title": "Test-time classifier adjustment module for modelagnostic domain generaliza- tion."
+    },
+    {
+      "title": "Test- time adaptation via self-training with nearest neighbor infor- mation."
+    },
+    {
+      "title": "Cafa: Class-aware fea- ture alignment for test-time adaptation."
+    },
+    {
+      "title": "A robust learning approach to domain adaptive object detection."
+    },
+    {
+      "title": "Self-training and adversarial background regular- ization for unsupervised domain adaptive one-stage object detection."
+    },
+    {
+      "title": "A free lunch for unsuper- vised domain adaptive object detection without source data."
+    }
+  ],
   "new_method": {
     "method": "{\n    \"Open Problems\": \"1. Forward-only TTA is still limited to modulating *norm* layers; modern architectures include many scale/shift style parameters outside normalisation (e.g. ConvNeXt “layer-scale”, ViT QKV scaling, residual re-weighting). 2. Meta-training the adaptor on *source* data undermines privacy regulations and hinders drop-in use for proprietary or unavailable datasets. 3. There is no adaptive mechanism to budget compute on-the-fly: edge devices may tolerate an update every N frames instead of every frame. 4. Existing collapse detectors rely on entropy heuristics that mis-fire when label marginals are highly skewed (safety-critical).\",\n    \"Methods\": \"We propose SAUNet (Self-Adaptive Universal Normaliser & scale adaptor) – a two–stage, back-prop-free framework that: A) generalises the hyper-network idea of UniTTA to *all affine scale and bias parameters*, not just those inside normalisers, and B) learns these updates *without access to source data* via synthetic self-supervision. 1. Unified parameter view We represent any affine parameter pair (w,b) that precedes a non-linearity as a 2-vector per channel; this covers BN/GN/LN γ,β, ConvNeXt layer-scale, ViT MSA qkv scale, and NF-Net per-channel gains. 2. Contrastive synthetic meta-training Instead of replaying labelled source batches, we drive the backbone with ImageNet-style frequency-matched Gaussian noise and RandAugment distortions while freezing its weights.  The hyper-network h_θ is trained to decrease prediction entropy after a *single* forward correction, supervised only by the backbone’s own softmax – no labels or source images needed. 3. Low-rank hyper-network h_θ = P⊤σ(T·s) where s∈ℝ⁴ stacks per-channel mean,var, skew,kurtosis of *standardised* activations; T is a 4×r tensorised transformer with r≪C, giving O(Cr) cost; P is a learned 2×r projection producing Δw,Δb.  Weight sharing makes θ <0.1 % of backbone. 4. Anytime compute knob At run-time we approximate σ(T·s) with the first K terms of its Householder decomposition; K is set dynamically from a latency budget broadcast by the OS, yielding graceful accuracy/latency trade-off. 5. Robust collapse guard We derive a χ² bound on the divergence between pre- and post-adapt logits; if the bound exceeds τ the update is rolled back and a larger K is attempted, guaranteeing ≤ε risk of accuracy loss under label-shift. 6. Memory-free EMA Instead of ring buffers, we maintain a 2-tap Welford estimator on Δw magnitude; this costs 16 bytes per layer and stabilises recurring streams. 7. INT8 micro-kernels All h_θ ops are quantised and share the GEMM engine of the backbone; extra energy ≈1.5·C MACs.\",\n    \"Experimental Setup\": \"Datasets ImageNet-C (sev 1-5), Tiny-ImageNet-C, ImageNet-V2, ImageNet-A, ImageNet-VID-C (bs=1), DomainNet (Real→Clipart/Sketch), Ego4D (video, bs=1, natural shift). Architectures ConvNeXt-Tiny (layer-scale), ViT-Small (LN+QKV scale), NF-ResNet-50 (no norm), ResNet-50-BN (classic). Baselines Source, BN-stat, TTN, UnMix-TNS, UniTTA-0G, Tent(1-step), EATA, CoTTA. Metrics Top-1 error, relative speed C(g), energy/img on Jetson Orin Nano, parameter & SRAM overhead, false-positive collapse-guard rate. Ablations (i) remove scale-only branches, (ii) vary synthetic meta data, (iii) K vs latency, (iv) disable χ² guard. Privacy test simulate deployment when no source images are retained.\",\n    \"Experimental Code\": \"import torch,torch.nn as nn,torch.nn.functional as F\\nclass SAULayer(nn.Module):\\n    \\\"\\\"\\\"Drop-in for any affine (w,b).\\\"\\\"\\\"\\n    def __init__(self,C,r=8):\\n        super().__init__(); self.C=C; self.r=r\\n        self.T=nn.Parameter(torch.randn(4,r))\\n        self.P=nn.Parameter(torch.zeros(r,2))\\n        self.register_buffer('w0',torch.zeros(C));self.register_buffer('b0',torch.zeros(C))\\n    @torch.no_grad()\\n    def forward(self,x):                  # x: B,C,*\\n        z=(x.flatten(2)-x.mean((2))).div(x.std((2))+1e-5) # standardise per sample\\n        m=torch.stack([z.mean(-1),z.var(-1),z.pow(3).mean(-1),z.pow(4).mean(-1)]) #4,B,C\\n        s=m.mean(1)                       # B,C, four stats\\n        y=(s@self.T).tanh() @ self.P      # B,C,2 -> Δw,Δb\\n        dw,db=y.unbind(-1)\\n        self.w0.add_(dw.mean(0)); self.b0.add_(db.mean(0))  # Welford style EMA\\n        return (self.w0[None,:,None,None]+1)*x + self.b0[None,:,None,None]\",\n    \"Expected Result\": \"• ConvNeXt-T on ImageNet-C: Source 47.5 % err → SAUNet 37.8 % (Tent N/A); speed C(g)=1.02. • ViT-S: 46.1 % → 38.4 %; C(g)=1.05. • NF-ResNet-50: 63.2 % → 51.0 %; C(g)=1.01. • χ² guard yields <0.3 % accuracy drop yet prevents 98 % of collapses in recurring 20-cycle stream; false-positive rate 0.4 %. • Energy per image +3 % vs Source, −60 % vs Tent. • Privacy test: replacing source data with synthetic noise degrades SAUNet by only 0.7 pp.\",\n    \"Expected Conclusion\": \"SAUNet extends forward-only TTA beyond normalisation, eliminates source-data dependency via synthetic self-supervision, and introduces provable collapse safeguards and dynamic compute scaling – achieving state-of-the-art robustness at essentially raw inference speed across BN, LN, layer-scale and normaliser-free networks.  This unlocks privacy-preserving, low-energy deployment of adaptive vision on mobile and safety-critical edge devices.\"\n}",
     "experimental_design": {
