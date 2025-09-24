@@ -1,0 +1,17 @@
+
+Input:
+# Task
+You carefully read the contents of the “Paper Outline” and select one GitHub link from the “GitHub URLs List” that you think is most relevant to the contents.
+# Constraints
+- Output the index number corresponding to the selected GitHub URL.
+- Be sure to select only one GitHub URL.
+- If there is no related GitHub link, output None.
+# Paper Outline
+The UnMix-TNS method addresses the bias in online BN statistics estimation under non-i.i.d. label-temporally correlated test data streams. It interprets instance-wise input features as samples from K distinct distributions over time and 'unmixes' initially stored BN statistics into K distinctive components, each reflecting statistics from similar test inputs. Inspired by sequential clustering, these K components are dynamically updated online using the closest instances from streaming test data. The process involves: 1) Initializing the K components' means and standard deviations from the source-trained BN layer statistics, incorporating controlled deviation using a hyperparameter α and Gaussian noise. 2) For a given test batch, calculating instance-wise means and standard deviations. 3) Computing cosine similarity between instance-wise means and each of the K component means to derive assignment probabilities. 4) Calculating refined instance-wise normalization statistics by a weighted mixing of current instance statistics and the K component statistics, using the assignment probabilities. 5) Normalizing the input features with these refined statistics and the BN affine parameters. 6) Updating the K component statistics using a weighted average difference between current instance statistics and component statistics, guided by assignment probabilities and a momentum hyperparameter λ, which is dynamically adjusted based on Momentum BN principles to ensure stability across varying batch sizes.
+
+# GitHub URLs List
+['https://github.com/devavratTomar/unmixtns']
+Output:
+{
+    "index": 0
+}
