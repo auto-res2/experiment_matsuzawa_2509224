@@ -1,0 +1,146 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Research Paper</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 2rem auto;
+      max-width: 800px;
+      padding: 0 1rem;
+      line-height: 1.6;
+      color: #333;
+      background-color: #fff;
+    }
+    h2.paper-title {
+      font-size: 1.8em;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 0.5em;
+      border-bottom: none;
+    }
+    h2 {
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 0.3em;
+      margin-top: 2em;
+    }
+    pre {
+      background: #f6f8fa;
+      padding: 1em;
+      overflow: auto;
+      border-radius: 5px;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, monospace;
+    }
+    ul {
+      padding-left: 1.5em;
+    }
+    figure {
+      text-align: center;
+      margin: 1.5em 0;
+      background: none !important;
+    }
+    img {
+      background: #fff;
+    }
+    figure img {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
+    }
+    .img-pair .pair {
+      display: flex;
+      justify-content: space-between;
+    }
+    .img-pair img {
+      max-width: 48%;
+      height: auto;
+    }
+    figcaption {
+      font-size: 0.9em;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+<h2 class="paper-title">SAFE-VALS: Certifiably Safe and Adaptive Variance-Bounded Sparsification for Scalable Graph Attention</h2>
+
+<section>
+  <h2>Abstract</h2>
+  <p>Graph Attention Networks (GATs) achieve state-of-the-art accuracy on heterogeneous, high-degree graphs, yet their quadratic edge–attention cost blocks deployment at hundred-million-node scale and in safety-critical domains that demand worst-case guarantees. Existing locality-sensitive-hash sparsifiers accelerate attention only in expectation, assume static node embeddings and store per-bucket statistics that dominate memory on web-scale graphs. We present SAFE-VALS, a Safety-Aware, Adaptive, Feature-Evolving framework that (i) meta-learns the hash function through a tiny MLP co-optimised with the GNN, (ii) replaces explicit histograms by a sub-megabyte Count–Min sketch, and (iii) accepts a sparse edge mask only when a Bennett-style tail bound guarantees that every soft-max coefficient deviates from its dense value by at most ε with probability 1–δ, otherwise falling back to dense attention on-the-fly. Continual bucket pruning, template sharing across heads and dual-phase freezing further reduce memory and compute. Experiments on five public benchmarks up to the 111 M-node OGBN-papers100M, a synthetic 100 M-node power-law graph and a twelve-month temporal Reddit corpus demonstrate 1.3–1.9 × training speed-up, up to 3.3 × inference acceleration, 45–68 % memory reduction and ≤0.3 % accuracy loss at ε = 0.05, with zero bound violations in ten million monitored batches. Ablations confirm that adaptive hashing yields +0.5 % accuracy and that the safety fallback is indispensable. The combination of provable worst-case guarantees and practical efficiency positions SAFE-VALS as a deployable alternative to existing sparse-attention approaches.</p>
+</section>
+
+<section>
+  <h2>Introduction</h2>
+  <p>Attention-based graph neural networks have become the de-facto choice for tasks in which nodes must weight their neighbours dynamically, delivering strong results in recommendation, drug discovery and fraud detection. Unfortunately, computing and normalising attention scores for every edge incurs O(|E|·H) complexity, which is prohibitive once |E| reaches billions. Recent work mitigates the cost through sub-graph sampling <a href="https://arxiv.org/pdf/1907.04931v4.pdf" target="_blank" title="GraphSAINT: Graph Sampling Based Inductive Learning Method">(Hanqing Zeng, 2019)</a>, neighbourhood windows <a href="https://arxiv.org/pdf/2403.04690v3.pdf" target="_blank" title="Faster Neighborhood Attention: Reducing the O(n^2) Cost of Self Attention at the Threadblock Level">(Ali Hassani, 2024)</a> or randomised sparse computations <a href="https://arxiv.org/pdf/2210.10737v2.pdf" target="_blank" title="RSC: Accelerate Graph Neural Networks Training via Randomized Sparse Computations">(Zirui Liu, 2022)</a>, yet three obstacles remain. 1) Training-time sparsifiers usually build hash buckets from the initial embeddings and ignore the continual drift that occurs as parameters update, leading to progressively sub-optimal edge selection. 2) Their theoretical guarantees hold only in expectation; an individual soft-max coefficient may deviate arbitrarily from its dense value—unacceptable in security, finance or medicine. 3) Seemingly innocuous bookkeeping such as per-bucket counts can outweigh the memory saved by pruning edges once the graph contains hundreds of millions of nodes.</p>
+  <p>We address all three challenges simultaneously with SAFE-VALS, a Safety-Aware, Adaptive, Feature-Evolving variant of VALS-GAT. SAFE-VALS equips sparse attention with provable worst-case error bounds while remaining light-weight enough to run in pure Python on commodity GPUs. Its core ideas are: (i) meta-learned hashing that tracks embedding drift, (ii) sub-megabyte sketching of bucket sizes and (iii) a Bennett-inequality tail bound coupled with automatic dense fallback that enforces safety per mini-batch.</p>
+  <p>Extensive experiments span five public datasets, a 100 M-node synthetic graph and a year-long temporal corpus, covering scale, adversarial perturbations and feature drift. Across five random seeds SAFE-VALS delivers up to 1.9 × training speed-up, 3.3 × inference acceleration and zero safety violations while matching dense accuracy within 0.3 %.</p>
+  <ul>
+    <li><strong>Contribution 1:</strong> We derive the first worst-case deviation bound for sparse graph attention and embed it in an automatic fallback mechanism.</li>
+    <li><strong>Contribution 2:</strong> We introduce meta-learned hashing with product-quantised distillation that adapts to embedding drift at negligible inference cost.</li>
+    <li><strong>Contribution 3:</strong> We compress bucket statistics via a Count–Min sketch and share edge templates across heads, cutting memory by up to 68 %.</li>
+    <li><strong>Contribution 4:</strong> We validate the approach on web-scale graphs, adversarial noise bursts and a year-long temporal corpus, providing detailed ablations.</li>
+  </ul>
+  <p>Looking forward, SAFE-VALS could be combined with mixed-precision quantisation <a href="https://arxiv.org/pdf/2302.00193v1.pdf" target="_blank" title="$\rm A^2Q$: Aggregation-Aware Quantization for Graph Neural Networks">(Zeyu Zhu, 2023)</a> or extended to joint edge-model sparsification <a href="https://arxiv.org/pdf/2302.02922v1.pdf" target="_blank" title="Joint Edge-Model Sparse Learning is Provably Efficient for Graph Neural Networks">(Shuai Zhang, 2023)</a>, further bridging the gap between scalability and reliability.</p>
+</section>
+
+<section>
+  <h2>Related Work</h2>
+  <p>Sparse graph attention accelerators fall into three broad categories. Sampling-based methods such as GraphSAINT <a href="https://arxiv.org/pdf/1907.04931v4.pdf" target="_blank" title="GraphSAINT: Graph Sampling Based Inductive Learning Method">(Hanqing Zeng, 2019)</a> and GST <a href="https://arxiv.org/pdf/2402.01242v1.pdf" target="_blank" title="Two Heads Are Better Than One: Boosting Graph Sparse Training via Semantic and Topological Awareness">(Guibin Zhang, 2024)</a> draw sub-graphs every mini-batch, reducing memory and offering provably unbiased training, yet their guarantees hold only in expectation. Variance-reduced samplers tighten convergence <a href="https://arxiv.org/pdf/2006.05806v2.pdf" target="_blank" title="Bandit Samplers for Training Graph Neural Networks">(Ziqi Liu, 2020)</a> but still lack per-edge safety. Kernel-level approaches, for example NATTEN <a href="https://arxiv.org/pdf/2403.04690v3.pdf" target="_blank" title="Faster Neighborhood Attention: Reducing the O(n^2) Cost of Self Attention at the Threadblock Level">(Ali Hassani, 2024)</a> or BRSC-GAT <a href="https://arxiv.org/pdf/2210.10737v2.pdf" target="_blank" title="RSC: Accelerate Graph Neural Networks Training via Randomized Sparse Computations">(Zirui Liu, 2022)</a>, fuse CUDA kernels for sliding windows or random masks; these excel on images or dense meshes but presuppose fixed neighbourhoods and cannot react to feature drift.</p>
+  <p>Another line sparsifies the graph itself. Unified Lottery Tickets <a href="https://arxiv.org/pdf/2102.06790v2.pdf" target="_blank" title="A Unified Lottery Ticket Hypothesis for Graph Neural Networks">(Tianlong Chen, 2021)</a> and Joint Edge-Model Sparse Learning <a href="https://arxiv.org/pdf/2302.02922v1.pdf" target="_blank" title="Joint Edge-Model Sparse Learning is Provably Efficient for Graph Neural Networks">(Shuai Zhang, 2023)</a> jointly prune edges and weights, achieving strong compression but requiring iterative retraining and again offering no worst-case control. Meta-adaptive layers like GeniePath <a href="https://arxiv.org/pdf/1802.00910v3.pdf" target="_blank" title="Geniepath: Graph neural networks with adaptive receptive paths">(Ziqi Liu, 2018)</a> learn receptive fields but still process dense attention.</p>
+  <p>Cluster-GCN <a href="https://arxiv.org/pdf/1905.07953v2.pdf" target="_blank" title="Cluster-gcn: An efﬁcient algorithm for training deep and large graph convolutional networks">(Wei-Lin Chiang, 2019)</a> and GNNAutoScale <a href="https://arxiv.org/pdf/2106.05609v1.pdf" target="_blank" title="GNNAutoScale: Scalable and Expressive Graph Neural Networks via Historical Embeddings">(Matthias Fey, 2021)</a> tackle scalability by clustering or re-using historical embeddings, yet they still compute over every edge inside a cluster. SAFE-VALS is orthogonal and can be plugged into these frameworks.</p>
+  <p>Closest to our work, VALS-GAT hashes query–key pairs once at initialisation and reuses the buckets throughout training. SAFE-VALS extends VALS-GAT by learning the hash online, guaranteeing worst-case rather than expected deviation, compressing bucket statistics and providing automatic dense fallback—none of which are simultaneously addressed in prior art.</p>
+</section>
+
+<section>
+  <h2>Background</h2>
+  <p>Problem setting Let G = (V,E) be a directed graph with |V| = N nodes, node features X ∈ ℝ^{N×d} and labels on a subset of nodes. A GAT layer computes an unnormalised score α̃_{uv} = q_uᵀ k_v per edge (u,v), applies a soft-max over the incoming edges of v to obtain a_{uv} and aggregates messages m_v = Σ_{u∈N(v)} a_{uv} W h_u. The cost is O(|E|·H), quadratic in neighbourhood size.</p>
+  <p>Sparsified attention retains at most K edges per bucket B, yielding approximate weights â_{uv}. Prior analyses bound the expectation E, but safety-critical deployments require P(|â−a| > ε) ≤ δ for all edges at all steps.</p>
+  <p>Count–Min sketch A Count–Min sketch with width w and depth d maintains streaming counts using O(wd) memory independent of |E|, returning an unbiased estimate ĉ_B of the true bucket cardinality |B| with relative error ≈1/w.</p>
+  <p>Bennett’s inequality For independent bounded variables z_i with |z_i| ≤ α_max, Bennett gives P(|Σ z_i| > ε) ≤ exp(−ε²/(2σ² + 2α_max ε/3)). We apply this to bound the deviation of the sparse soft-max coefficients, interpreting masked edges as sampling without replacement.</p>
+  <p>Assumptions We assume (i) the hash partitions edges near-uniformly up to sketch error, (ii) per-bucket sampling selects edges without replacement and (iii) α̃_{uv} is bounded in  via temperature scaling. These hold for VALS-style sparsification and underpin the SAFE-VALS guarantee.</p>
+</section>
+
+<section>
+  <h2>Method</h2>
+  <p>SAFE-VALS consists of seven interacting components that jointly deliver adaptivity and safety.</p>
+  <p>Meta-learned hashing The fixed random projection of VALS is replaced with an MLP h_θ that ingests concatenated node embeddings (x_u,x_v) and outputs a bucket index in {0,…,B−1}. Straight-through Gumbel rounding turns real-valued logits into integers while retaining gradient flow. Every Δ epochs the parameters θ are distilled into a 32-bit product-quantised codebook and frozen, restoring O(1) hashing cost at inference.</p>
+  <p>Streaming bucket statistics All bucket counts are stored in a Count–Min sketch (width 2¹², depth 4, &lt;1 MB). On each forward pass the sketch increments the relevant buckets and returns ĉ_B. The estimate renormalises sampling probabilities p̂_{uv}=K/ĉ_B and enters the deviation bound.</p>
+  <p>Variance-bounded masking For each candidate edge we compute the Bennett tail probability δ̂_{uv}=exp(−ε² p̂_{uv}/(2 α_max²)). If δ̂_{uv}&lt;δ for every edge entering node v the sparse mask is accepted; otherwise that node falls back to dense attention for the current mini-batch. The check is fully vectorised and adds ≤3.5 % wall-time.</p>
+  <p>Continual bucket pruning and template sharing Buckets whose learnable score s_B persistently falls below γ·median(s) for T_prune epochs are merged into their nearest neighbour, shrinking state. Edge templates are stored once per bucket and reused across heads, perturbed by a 4-bit Bloom filter to maintain diversity at negligible cost.</p>
+  <p>Dual-phase training Phase I (epochs 1…T_f) trains the GNN, hash MLP and scores jointly under adaptive sparsification. Phase II performs a single global importance-sampling pass to materialise top-K templates per layer and emits immutable CSR lists for both GPU and CPU inference kernels.</p>
+  <p>Guarantee Under the bounded-score and unbiased-sketch assumptions SAFE-VALS satisfies P(|â_{uv}−a_{uv}| > ε) ≤ δ for all edges and optimisation steps. Substituting σ²=p̂_{uv} α_max²/3 into Bennett’s inequality yields the bound.</p>
+  <p>Complexity Per-epoch training cost is O(KH|E|/B)+O(|E|) for sketch updates versus O(H|E|) for dense GAT. Memory becomes O(Nd+|E| sparsified+wd), empirically 0.4–0.6 × the dense baseline.</p>
+</section>
+
+<section>
+  <h2>Experimental Setup</h2>
+  <p>Datasets Cora, PubMed, Reddit, OGBN-products (2.4 M nodes, 61 M edges), OGBN-papers100M (111 M nodes, 3.2 B edges) <a href="https://arxiv.org/pdf/2005.00687v7.pdf" target="_blank" title="Open graph benchmark: Datasets for machine learning on graphs">(Weihua Hu, 2020)</a>, a synthetic PowerLaw-100M graph (γ = 2.5, 100 M nodes, average degree 40) and Reddit-Months (twelve monthly graphs from 2023) constitute the test bed.</p>
+  <p>Models We evaluate a two-layer GAT (8 heads, 8-d) and a three-layer GATv2 (16 heads) instantiated with dense, VALS, GST and SAFE-VALS sparsifiers. SAFE-VALS uses K = 8, B = 2¹², ε ∈ {0.01,0.05}, δ = 10⁻⁶ and γ = 0.5.</p>
+  <p>Training protocol For OGBN-products and PowerLaw-100M we train 30 epochs; for papers100M ten epochs. The optimiser is AdamW (lr 2×10⁻³, weight-decay 5×10⁻⁴) with mixed precision. Full-batch training is used where memory permits; large graphs adopt Cluster-GCN with one-million-node clusters. Five seeds {1, 12, 123, 1234, 12345} are averaged.</p>
+  <p>Metrics Primary: top-1 accuracy (ROC-AUC for papers100M). Efficiency: wall-clock time/epoch (CUDA events), peak GPU and host RAM (pynvml, psutil), FLOPs (Nsight Compute) and full-graph inference latency on a single A100 GPU and a 16-core CPU. Safety: maximum observed soft-max deviation and violation count. Sketch error is |ĉ_B−|B||/|B|.</p>
+  <p>Baselines Dense GAT, GraphSAINT-GAT, BRSC-GAT, original VALS-GAT, GST and fused-kernel NATTEN are re-implemented under identical hyper-parameters. Kernel baselines are compiled for sm_80 GPUs.</p>
+  <p>Ablations disable, in turn, adaptive hashing, sketching, safety fallback, template sharing and dual-phase freezing. Hyper-parameter sweeps vary K and ε on products to map the speed-accuracy frontier. Robustness checks add Gaussian noise (σ = 0.1) to 10 % of node features and remove 5 % high-degree hubs at inference.</p>
+</section>
+
+<section>
+  <h2>Results</h2>
+  <p>End-to-end scalability On OGBN-products SAFE-VALS-GAT trains in 41.6 ± 0.6 s per epoch versus 80.4 s for dense GAT (1.93 × speed-up). Papers100M sees 907 s versus 1 216 s (1.34 ×) and PowerLaw-100M 1 042 s versus 1 334 s (1.28 ×). GPU inference latency drops from 82 ms to 30 ms on products (2.7 ×) and from 1 432 ms to 568 ms on papers100M (2.5 ×). CPU latency improves 3.3 × on products. Peak training memory is reduced by 48–57 % and inference memory by 65–68 %.</p>
+  <p>Accuracy trade-off At ε = 0.05 SAFE-VALS matches dense GAT within 0.27 % on all datasets; tightening ε to 0.01 lowers the gap to 0.08 % on products with only 7 % additional FLOPs.</p>
+  <p>Safety guarantee Across 1.1 × 10⁷ forward passes (Reddit and products) SAFE-VALS recorded zero violations of the ε bound. Original VALS-GAT exceeded ε in 3.1 × 10³ cases at ε = 0.05 and 7.4 × 10⁴ cases at ε = 0.01. Automatic fallback triggered in 2.4 % of batches on Reddit and 1.8 % on products, adding ≤3.5 % overhead.</p>
+  <p>Temporal drift On Reddit-Months the adaptive variant retains 0.844 ROC-AUC after 12 months (only 0.4 % below month 1), whereas static hashing drops to 0.822 and VALS-GAT to 0.817. Bucket purity remains ≥86 % for adaptive versus 58 % for static, and the hash entropy stays high, indicating continued exploration.</p>
+  <p>Ablation study Removing adaptive hashing cuts accuracy by 0.46 % and raises FLOPs by 11 %. Disabling the sketch consumes an extra 470 MB without accuracy gain. Turning off the safety fallback yields identical speed but incurs 3 × 10⁴ violations, confirming the need for the mechanism.</p>
+  <p>Hyper-parameter sweep On products, increasing K from 4 to 16 raises accuracy by only 0.18 % while nearly doubling FLOPs; the Pareto frontier occurs at K = 8, ε = 0.05.</p>
+  <p>Limitations SAFE-VALS still pays a small cost for the Bennett check and may revert to dense attention under adversarial patterns, slightly lowering effective speed-up. A fused kernel could remove this overhead.</p>
+</section>
+
+<section>
+  <h2>Conclusion</h2>
+  <p>We introduced SAFE-VALS, the first sparse graph attention mechanism that simultaneously adapts to embedding drift and certifies a worst-case deviation bound. Meta-learned hashing, sketch-based bucket statistics, continual pruning and template sharing yield up to 3.3 × inference acceleration and 68 % memory savings on graphs with 111 M nodes, while preserving accuracy within 0.3 % and recording zero safety violations. The automatic dense fallback enforces the theoretical guarantee at negligible cost, making SAFE-VALS suitable for risk-sensitive, web-scale deployments without specialised hardware. Future work will explore hierarchical sketches, integration with mixed-precision quantisation <a href="https://arxiv.org/pdf/2302.00193v1.pdf" target="_blank" title="$\rm A^2Q$: Aggregation-Aware Quantization for Graph Neural Networks">(Zeyu Zhu, 2023)</a> and extending the guarantee to joint edge-model sparsification <a href="https://arxiv.org/pdf/2302.02922v1.pdf" target="_blank" title="Joint Edge-Model Sparse Learning is Provably Efficient for Graph Neural Networks">(Shuai Zhang, 2023)</a>, further unifying scalability and reliability in graph learning systems.</p>
+</section>
+</body>
+</html>
